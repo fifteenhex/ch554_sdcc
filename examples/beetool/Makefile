@@ -1,4 +1,4 @@
-TARGET = daplink
+TARGET = beetool
 
 # 24M not stable if VCC = 3V3
 FREQ_SYS = 16000000
@@ -15,6 +15,5 @@ C_FILES = \
 	../../include/debug.c
 
 pre-flash:
-	
 
 include ../Makefile.include
