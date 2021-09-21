@@ -325,6 +325,20 @@ typedef struct _USB_INTERF_DESCR {
 
 typedef USB_ITF_DESCR __xdata *PXUSB_ITF_DESCR;
 
+
+#define INTERF_DESCR(number, numep, class, subclass)		\
+	{							\
+		.bLength = sizeof(USB_ITF_DESCR),		\
+		.bDescriptorType = USB_DESCR_TYP_INTERF,	\
+		.bInterfaceNumber = number,			\
+		.bAlternateSetting = 0,				\
+		.bNumEndpoints = numep,				\
+		.bInterfaceClass = class,			\
+		.bInterfaceSubClass = subclass,			\
+		.bInterfaceProtocol = 0,			\
+		.iInterface = 0,				\
+	}
+
 typedef struct _USB_ENDPOINT_DESCR {
     uint8_t bLength;
     uint8_t bDescriptorType;
