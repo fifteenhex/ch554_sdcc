@@ -43,19 +43,7 @@ __code struct {
 	USB_ENDP_DESCR i2c_in_ep;
 	USB_ENDP_DESCR i2c_out_ep;
 } CfgDesc = {
-	.config = {
-		.bLength = sizeof(USB_CFG_DESCR),
-		.bDescriptorType = USB_DESCR_TYP_CONFIG,
-		.wTotalLengthL = (sizeof(CfgDesc) & 0xff),
-		.wTotalLengthH = ((sizeof(CfgDesc) >> 8) & 0xff),
-		.bNumInterfaces = 3,
-		.bConfigurationValue = 1,
-		/* string index */
-		.iConfiguration = 0,
-		.bmAttributes = 0x80,
-		 /* 2mA units */
-		.MaxPower = 50
-	},
+	.config = CFG_DESCR(3),
 	/* cdc control */
 	.cdc_control_interface = INTERF_DESCR(0, 1,USB_DEV_CLASS_COMMUNIC, USB_DEV_SUBCLASS_CDC_ACM),
 	.cdc_header_functional = HEADERFUNCTIONAL_DESCR(),
@@ -64,7 +52,7 @@ __code struct {
 	.cdc_call_management_functional = CALLMANAGEMENTFUNCTIONAL_DESCR(1),
 	.cdc_ctrl_ep = ENDPOINT_DESCR(1, 1),
 	/* cdc data */
-	.cdc_data_interface = INTERF_DESCR(1, 2, USB_DEV_CLASS_COMMUNIC, USB_DEV_SUBCLASS_CDC_ACM),
+	.cdc_data_interface = INTERF_DESCR(1, 2, USB_DEV_CLASS_CDC_DATA, 0),
 	.cdc_data_in_ep = ENDPOINT_DESCR(2, 1),
 	.cdc_data_out_ep = ENDPOINT_DESCR(2, 0),
 	/* i2c */

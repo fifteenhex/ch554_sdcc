@@ -2,7 +2,8 @@
 #define __USB_HANDLER_H__
 
 #include <stdint.h>
-#include "USBconstant.h"
+
+#include "usb_descriptor.h"
 
 #define UsbSetupBuf     ((PUSB_SETUP_REQ)Ep0Buffer)
 

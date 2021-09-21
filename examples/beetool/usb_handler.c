@@ -4,8 +4,8 @@
 
 #include <ch554.h>
 #include <ch554_usb.h>
-#include "USBconstant.h"
 #include "config.h"
+#include "usb_descriptor.h"
 
 //HID functions:
 void USB_EP2_IN();
@@ -385,14 +385,13 @@ static void USB_EP0_OUT()
 
 #pragma save
 #pragma nooverlay
+//inline not really working in multiple files in SDCC
 void USBInterrupt(void)
-{   //inline not really working in multiple files in SDCC
-	LED = ~LED;
-
+{
 	if(UIF_TRANSFER) {
-        // Dispatch to service functions
-        uint8_t callIndex=USB_INT_ST & MASK_UIS_ENDP;
-        switch (USB_INT_ST & MASK_UIS_TOKEN) {
+		// Dispatch to service functions
+		uint8_t callIndex=USB_INT_ST & MASK_UIS_ENDP;
+		switch (USB_INT_ST & MASK_UIS_TOKEN) {
             case UIS_TOKEN_OUT:
             {//SDCC will take IRAM if array of function pointer is used.
                 switch (callIndex) {
