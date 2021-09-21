@@ -146,6 +146,10 @@ CH554.H Header file for CH554 microcontrollers.
 #define USB_DEV_CLASS_VEN_SPEC  0xFF
 #endif
 
+/* USB descriptor subtype */
+#define USB_DEV_SUBCLASS_CDC_ACM	0x2
+
+
 /* USB endpoint type and attributes */
 #ifndef USB_ENDP_TYPE_MASK
 #define USB_ENDP_DIR_MASK       0x80
@@ -196,6 +200,79 @@ typedef struct _USB_SETUP_REQ {
 } USB_SETUP_REQ, *PUSB_SETUP_REQ;
 
 typedef USB_SETUP_REQ __xdata *PXUSB_SETUP_REQ;
+
+typedef struct _USB_HEADERFUNCTIONAL_DESCR {
+	uint8_t bFunctionLength;
+	uint8_t bDescriptorType;
+	uint8_t bDescriptorSubtype;
+	uint16_t bcdCDC;
+} USB_HEADERFUNCTIONAL_DESCR, *PUSB_HEADERFUNCTIONAL_DESCR;
+
+typedef USB_HEADERFUNCTIONAL_DESCR __xdata *PXUSB_HEADERFUNCTIONAL_DESCR;
+
+// todo endian of cdc
+#define HEADERFUNCTIONAL_DESCR(subtype) \
+	{								\
+		.bFunctionLength = sizeof(USB_HEADERFUNCTIONAL_DESCR),	\
+		.bDescriptorType = USB_DESCR_TYP_CS_INTF,		\
+		.bDescriptorSubtype = subtype,				\
+		.bcdCDC = 0x0110,					\
+	}
+
+typedef struct _USB_ACMFUNCTIONAL_DESCR {
+	uint8_t bFunctionLength;
+	uint8_t bDescriptorType;
+	uint8_t bDescriptorSubtype;
+	uint8_t bmCapabilities;
+} USB_ACMFUNCTIONAL_DESCR, *PUSB_ACMFUNCTIONAL_DESCR;
+
+typedef USB_ACMFUNCTIONAL_DESCR __xdata *PXUSB_ACMFUNCTIONAL_DESCR;
+
+#define ACMFUNCTIONAL_DESCR(subtype, caps) \
+	{								\
+		.bFunctionLength = sizeof(USB_ACMFUNCTIONAL_DESCR),	\
+		.bDescriptorType = USB_DESCR_TYP_CS_INTF,		\
+		.bDescriptorSubtype = 0x02,				\
+		.bmCapabilities = caps,					\
+	}
+
+typedef struct _USB_UNIONFUNCTIONAL_DESCR {
+	uint8_t bFunctionLength;
+	uint8_t bDescriptorType;
+	uint8_t bDescriptorSubtype;
+	uint8_t bControlInterface;
+	uint8_t bSubordinateInterface0;
+} USB_UNIONFUNCTIONAL_DESCR, *PUSB_UNIONFUNCTIONAL_DESCR;
+
+#define UNIONFUNCTIONAL_DESCR(ctrlif, dataif) \
+	{								\
+		.bFunctionLength = sizeof(USB_UNIONFUNCTIONAL_DESCR),	\
+		.bDescriptorType = USB_DESCR_TYP_CS_INTF,		\
+		.bDescriptorSubtype = 0x06,				\
+		.bControlInterface = ctrlif,				\
+		.bSubordinateInterface0 = dataif,			\
+	}
+
+typedef USB_UNIONFUNCTIONAL_DESCR __xdata *PXUSB_UNIONFUNCTIONAL_DESCR;
+
+typedef struct _USB_CALLMANAGEMENTFUNCTIONAL_DESCR {
+	uint8_t bFunctionLength;
+	uint8_t bDescriptorType;
+	uint8_t bDescriptorSubtype;
+	uint8_t bmCapabilities;
+	uint8_t bDataInterface;
+} USB_CALLMANAGEMENTFUNCTIONAL_DESCR, *PUSB_CALLMANAGEMENTFUNCTIONAL_DESCR;
+
+typedef USB_CALLMANAGEMENTFUNCTIONAL_DESCR __xdata *PXUSB_CALLMANAGEMENTFUNCTIONAL_DESCR;
+
+#define CALLMANAGEMENTFUNCTIONAL_DESCR(dataif) \
+	{									\
+		.bFunctionLength = sizeof(USB_CALLMANAGEMENTFUNCTIONAL_DESCR),	\
+		.bDescriptorType = USB_DESCR_TYP_CS_INTF,			\
+		.bDescriptorSubtype = 0x01,					\
+		.bmCapabilities = 0x3,						\
+		.bDataInterface = dataif,					\
+	}
 
 typedef struct _USB_DEVICE_DESCR {
     uint8_t bLength;
