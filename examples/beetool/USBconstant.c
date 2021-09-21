@@ -34,14 +34,14 @@ __code struct {
 	USB_ACMFUNCTIONAL_DESCR cdc_acm_functional;
 	USB_UNIONFUNCTIONAL_DESCR cdc_union_functional;
 	USB_CALLMANAGEMENTFUNCTIONAL_DESCR cdc_call_management_functional;
-	USB_ENDP_DESCR ep3IN;
+	USB_ENDP_DESCR cdc_ctrl_ep;
 	USB_ITF_DESCR cdc_data_interface;
-	USB_ENDP_DESCR ep4IN;
-	USB_ENDP_DESCR ep4OUT;
+	USB_ENDP_DESCR cdc_data_in_ep;
+	USB_ENDP_DESCR cdc_data_out_ep;
 	/* i2c */
 	USB_ITF_DESCR i2c_interface;
-	USB_ENDP_DESCR ep1IN;
-	USB_ENDP_DESCR ep1OUT;
+	USB_ENDP_DESCR i2c_in_ep;
+	USB_ENDP_DESCR i2c_out_ep;
 } CfgDesc = {
 	.config = {
 		.bLength = sizeof(USB_CFG_DESCR),
@@ -57,96 +57,20 @@ __code struct {
 		.MaxPower = 50
 	},
 	/* cdc control */
-	.cdc_control_interface = {
-		.bLength = sizeof(USB_ITF_DESCR),
-		.bDescriptorType = USB_DESCR_TYP_INTERF,
-		.bInterfaceNumber = 0,
-		.bAlternateSetting = 0,
-		.bNumEndpoints = 1,
-		.bInterfaceClass = USB_DEV_CLASS_COMMUNIC,
-		.bInterfaceSubClass = USB_DEV_SUBCLASS_CDC_ACM,
-		.bInterfaceProtocol = 0,
-		// no interface string
-		.iInterface = 0,
-	},
-	.cdc_header_functional = HEADERFUNCTIONAL_DESCR(0),
-	.cdc_acm_functional = ACMFUNCTIONAL_DESCR(0x2, 0xf),
+	.cdc_control_interface = INTERF_DESCR(0, 1,USB_DEV_CLASS_COMMUNIC, USB_DEV_SUBCLASS_CDC_ACM),
+	.cdc_header_functional = HEADERFUNCTIONAL_DESCR(),
+	.cdc_acm_functional = ACMFUNCTIONAL_DESCR(0xf),
 	.cdc_union_functional = UNIONFUNCTIONAL_DESCR(0, 1),
 	.cdc_call_management_functional = CALLMANAGEMENTFUNCTIONAL_DESCR(1),
-	.ep3IN = {
-		.bLength = sizeof(USB_ENDP_DESCR),
-		.bDescriptorType = USB_DESCR_TYP_ENDP,
-		// EP3 IN
-		.bEndpointAddress = 0x83,
-		.bmAttributes = USB_ENDP_TYPE_INTER,
-		.wMaxPacketSizeL = HID_PKT_SIZ,
-		.wMaxPacketSizeH = 0,
-		// poll every 1 ms
-		.bInterval = 1,
-	},
+	.cdc_ctrl_ep = ENDPOINT_DESCR(1, 1),
 	/* cdc data */
-	.cdc_data_interface = {
-		.bLength = sizeof(USB_ITF_DESCR),
-		.bDescriptorType = USB_DESCR_TYP_INTERF,
-		.bInterfaceNumber = 1,
-		.bAlternateSetting = 0,
-		.bNumEndpoints = 2,
-		.bInterfaceClass = USB_DEV_CLASS_COMMUNIC,
-		.bInterfaceSubClass = 0,
-		.bInterfaceProtocol = 0,
-		// no interface string
-		.iInterface = 0,
-	},
-	.ep4IN = {
-		.bLength = sizeof(USB_ENDP_DESCR),
-		.bDescriptorType = USB_DESCR_TYP_ENDP,
-		// EP4 IN
-		.bEndpointAddress = 0x84,
-		.bmAttributes = USB_ENDP_TYPE_INTER,
-		.wMaxPacketSizeL = HID_PKT_SIZ,
-		.wMaxPacketSizeH = 0,
-		// poll every 1 ms
-		.bInterval = 1,
-	},
-	.ep4OUT = {
-		.bLength = sizeof(USB_ENDP_DESCR),
-		.bDescriptorType = USB_DESCR_TYP_ENDP,
-		.bEndpointAddress = 0x03,       // EP1 IN
-		.bmAttributes = USB_ENDP_TYPE_INTER,
-		.wMaxPacketSizeL = HID_PKT_SIZ,
-		.wMaxPacketSizeH = 0,
-		.bInterval = 1,                 // poll every 1 ms
-	},
+	.cdc_data_interface = INTERF_DESCR(1, 2, USB_DEV_CLASS_COMMUNIC, USB_DEV_SUBCLASS_CDC_ACM),
+	.cdc_data_in_ep = ENDPOINT_DESCR(2, 1),
+	.cdc_data_out_ep = ENDPOINT_DESCR(2, 0),
 	/* i2c */
-	.i2c_interface = {
-		.bLength = sizeof(USB_ITF_DESCR),
-		.bDescriptorType = USB_DESCR_TYP_INTERF,
-		.bInterfaceNumber = 2,
-		.bAlternateSetting = 0,
-		.bNumEndpoints = 2,
-		.bInterfaceClass = USB_DEV_CLASS_HID,
-		.bInterfaceSubClass = 0,
-		.bInterfaceProtocol = 0,
-		.iInterface = 0,                // no interface string
-	},
-	.ep1IN = {
-		.bLength = sizeof(USB_ENDP_DESCR),
-		.bDescriptorType = USB_DESCR_TYP_ENDP,
-		.bEndpointAddress = 0x81,       // EP1 IN
-		.bmAttributes = USB_ENDP_TYPE_INTER,
-		.wMaxPacketSizeL = HID_PKT_SIZ,
-		.wMaxPacketSizeH = 0,
-		.bInterval = 1,                 // poll every 1 ms
-	},
-	.ep1OUT = {
-		.bLength = sizeof(USB_ENDP_DESCR),
-		.bDescriptorType = USB_DESCR_TYP_ENDP,
-		.bEndpointAddress = 0x1,       // EP1 out
-		.bmAttributes = USB_ENDP_TYPE_INTER,
-		.wMaxPacketSizeL = HID_PKT_SIZ,
-		.wMaxPacketSizeH = 0,
-		.bInterval = 1,                 // poll every 1 ms
-	},
+	.i2c_interface = INTERF_DESCR(2, 2, USB_DESCR_TYP_INTERF, USB_DEV_SUBCLASS_CDC_ACM),
+	.i2c_in_ep = ENDPOINT_DESCR(3, 1),
+	.i2c_out_ep = ENDPOINT_DESCR(3, 0),
 };
 
 __code uint8_t ReportDesc[] ={

@@ -14,6 +14,9 @@ C_FILES = \
     $(wildcard *.c) \
 	../../include/debug.c
 
+pythonflash:
+	python3 -m ch55xtool -f beetool.bin
+
 pre-flash:
 
 include ../Makefile.include

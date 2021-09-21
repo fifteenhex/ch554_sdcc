@@ -13,7 +13,8 @@
 #define EP0_IN_Callback USB_EP0_IN
 
 void USBInterrupt(void);
-void USBDeviceSetup();
+
+void usb_configure(void);
 
 #endif
 

@@ -1,8 +1,9 @@
+#include "usb_handler.h"
+
 #include <string.h>
 
 #include <ch554.h>
 #include <ch554_usb.h>
-#include "USBhandler.h"
 #include "USBconstant.h"
 #include "config.h"
 
@@ -12,8 +13,18 @@ void USB_EP1_OUT();
 
 //on page 47 of data sheet, the receive buffer need to be min(possible packet size+2,64)
 __xdata uint8_t  Ep0Buffer[DEFAULT_ENDP0_SIZE + 2];
+#ifdef CONFIG_EP1_ENABLE
 __xdata uint8_t  Ep1Buffer[HID_PKT_SIZ * 2];    // EP1 OUT*2
+#endif
+#ifdef CONFIG_EP2_ENABLE
 __xdata uint8_t  Ep2Buffer[HID_PKT_SIZ];
+#endif
+#ifdef CONFIG_EP3_ENABLE
+__xdata uint8_t  Ep3Buffer[HID_PKT_SIZ];
+#endif
+#ifdef CONFIG_EP4_ENABLE
+__xdata uint8_t  Ep4Buffer[HID_PKT_SIZ];
+#endif
 
 uint8_t SetupLen;
 uint8_t SetupReq,UsbConfig;
@@ -60,7 +71,8 @@ void ccpyx(__code char* src)
     __endasm;
 }
 
-void USB_EP0_Setup(){
+void USB_EP0_Setup()
+{
     uint8_t len = USB_RX_LEN;
     if(len == (sizeof(USB_SETUP_REQ)))
     {
@@ -338,7 +350,8 @@ void USB_EP0_Setup(){
     }
 }
 
-void USB_EP0_IN(){
+static void USB_EP0_IN()
+{
     switch(SetupReq)
     {
         case USB_GET_DESCRIPTOR:
@@ -363,15 +376,20 @@ void USB_EP0_IN(){
     }
 }
 
-void USB_EP0_OUT(){
-    UEP0_T_LEN = 0;
-    UEP0_CTRL |= UEP_R_RES_ACK | UEP_T_RES_NAK;  //Respond Nak
+static void USB_EP0_OUT()
+{
+	UEP0_T_LEN = 0;
+	//Respond Nak
+	UEP0_CTRL |= UEP_R_RES_ACK | UEP_T_RES_NAK;
 }
 
 #pragma save
 #pragma nooverlay
-void USBInterrupt(void) {   //inline not really working in multiple files in SDCC
-    if(UIF_TRANSFER) {
+void USBInterrupt(void)
+{   //inline not really working in multiple files in SDCC
+	LED = ~LED;
+
+	if(UIF_TRANSFER) {
         // Dispatch to service functions
         uint8_t callIndex=USB_INT_ST & MASK_UIS_ENDP;
         switch (USB_INT_ST & MASK_UIS_TOKEN) {
@@ -440,35 +458,62 @@ void USBInterrupt(void) {   //inline not really working in multiple files in SDC
 }
 #pragma restore
 
-void USBDeviceSetup()
+void usb_configure()
 {
-    //USB internal pull-up enable, return NAK if USB INT flag not clear 
-    USB_CTRL = bUC_DEV_PU_EN | bUC_INT_BUSY | bUC_DMA_EN;
+	//USB internal pull-up enable, return NAK if USB INT flag not clear
+	USB_CTRL = bUC_DEV_PU_EN | bUC_INT_BUSY | bUC_DMA_EN;
 
-    // enable port, full-speed, disable UDP/UDM pulldown resistor
-    UDEV_CTRL = bUD_PD_DIS | bUD_PORT_EN;
+	// enable port, full-speed, disable UDP/UDM pulldown resistor
+	UDEV_CTRL = bUD_PD_DIS | bUD_PORT_EN;
 
-    // configure interrupts
-    // USB_INT_EN |= bUIE_SUSPEND;         //Enable device hang interrupt
-    USB_INT_EN |= bUIE_TRANSFER;        //Enable USB transfer completion interrupt
-    USB_INT_EN |= bUIE_BUS_RST;         //Enable device mode USB bus reset interrupt
-    USB_INT_FG |= 0x1F;                 //Clear interrupt flag
-    IE_USB = 1;                         //Enable USB interrupt
-    EA = 1;                             //Enable global interrupts
+	// configure interrupts
+	// USB_INT_EN |= bUIE_SUSPEND;         //Enable device hang interrupt
+	USB_INT_EN |= bUIE_TRANSFER;        //Enable USB transfer completion interrupt
+	USB_INT_EN |= bUIE_BUS_RST;         //Enable device mode USB bus reset interrupt
+	USB_INT_FG |= 0x1F;                 //Clear interrupt flag
+	IE_USB = 1;                         //Enable USB interrupt
+	EA = 1;                             //Enable global interrupts
 
-    // configure endpoints
-    UEP1_DMA = (uint16_t) Ep1Buffer;    //Endpoint data transfer address
-    UEP2_DMA = (uint16_t) Ep2Buffer;    //Endpoint data transfer address
+	/* configure endpoints */
+	UEP0_DMA = (uint16_t) Ep0Buffer;    //Endpoint 0 data transfer address
+	UEP0_T_LEN = 0;
+	//Manual flip, OUT transaction returns ACK, IN transaction returns NAK
+	UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
 
-    UEP1_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_ACK;        //Endpoint 1 automatically flips the sync flag, IN transaction returns NAK, OUT returns ACK
-    UEP2_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_NAK;        //Endpoint 2 automatically flips the sync flag, IN & OUT transaction returns NAK
-    
-    UEP0_DMA = (uint16_t) Ep0Buffer;    //Endpoint 0 data transfer address
-    UEP4_1_MOD = bUEP1_RX_EN;
-    UEP2_3_MOD = bUEP2_TX_EN;
-    UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;                //Manual flip, OUT transaction returns ACK, IN transaction returns NAK
+#ifdef CONFIG_EP1_ENABLE
+	/* Endpoint data transfer address */
+	UEP1_DMA = (uint16_t) Ep1Buffer;
+	/* Endpoint 1 automatically flips the sync flag, IN transaction returns NAK,
+	 * OUT returns ACK
+	 */
+	UEP1_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_ACK;
+	UEP1_T_LEN = 0;
+#endif
 
-    UEP0_T_LEN = 0;
-    UEP1_T_LEN = 0;
-    UEP2_T_LEN = 0;                                                          
+#ifdef CONFIG_EP2_ENABLE
+	/* Endpoint data transfer address */
+	UEP2_DMA = (uint16_t) Ep2Buffer;
+	//Endpoint 2 automatically flips the sync flag, IN & OUT transaction returns NAK
+	UEP2_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_NAK;
+	UEP2_T_LEN = 0;
+#endif
+
+#ifdef CONFIG_EP3_ENABLE
+	/* Endpoint data transfer address */
+	UEP3_DMA = (uint16_t) Ep3Buffer;
+	//Endpoint 2 automatically flips the sync flag, IN & OUT transaction returns NAK
+	UEP3_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_NAK;
+	UEP3_T_LEN = 0;
+#endif
+
+#ifdef CONFIG_EP4_ENABLE
+	/* Endpoint data transfer address */
+	UEP4_DMA = (uint16_t) Ep4Buffer;
+	//Endpoint 2 automatically flips the sync flag, IN & OUT transaction returns NAK
+	UEP4_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_NAK;
+	UEP4_T_LEN = 0;
+#endif
+
+	UEP4_1_MOD = bUEP1_RX_EN;
+	UEP2_3_MOD = bUEP2_TX_EN;
 }
