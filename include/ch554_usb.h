@@ -147,6 +147,7 @@ CH554.H Header file for CH554 microcontrollers.
 #endif
 
 /* USB descriptor subtype */
+#define USB_DEV_CLASS_CDC_DATA		0x0a
 #define USB_DEV_SUBCLASS_CDC_ACM	0x2
 
 
@@ -310,6 +311,19 @@ typedef struct _USB_CONFIG_DESCR {
 } USB_CFG_DESCR, *PUSB_CFG_DESCR;
 
 typedef USB_CFG_DESCR __xdata *PXUSB_CFG_DESCR;
+
+#define CFG_DESCR(numinterfaces) \
+	{	\
+		.bLength = sizeof(USB_CFG_DESCR),			\
+		.bDescriptorType = USB_DESCR_TYP_CONFIG,		\
+		.wTotalLengthL = (sizeof(CfgDesc) & 0xff),		\
+		.wTotalLengthH = ((sizeof(CfgDesc) >> 8) & 0xff),	\
+		.bNumInterfaces = numinterfaces,			\
+		.bConfigurationValue = 1,				\
+		.iConfiguration = 0,					\
+		.bmAttributes = 0x80,					\
+		.MaxPower = 50						\
+	}
 
 typedef struct _USB_INTERF_DESCR {
     uint8_t bLength;
