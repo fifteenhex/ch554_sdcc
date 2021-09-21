@@ -12,17 +12,17 @@
 #include "config.h"
 #include "usb_handler.h"
 
-void DeviceUSBInterrupt(void) __interrupt (INT_NO_USB)
-{
-        USBInterrupt();
-}
-
 //Bytes of received data on USB endpoint
 volatile uint8_t USBByteCountEP1 = 0;
 
 // for EP1 OUT double-buffering 
 volatile uint8_t EP1_buffs_avail = 2;
 __bit EP1_buf_toggle = 0;
+
+static void usb_irq(void) __interrupt (INT_NO_USB)
+{
+	usb_interrupt();
+}
 
 void USB_EP2_IN()
 {

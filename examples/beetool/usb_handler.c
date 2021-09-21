@@ -71,7 +71,7 @@ void ccpyx(__code char* src)
     __endasm;
 }
 
-void USB_EP0_Setup()
+static void usb_ep0_setup(void)
 {
     uint8_t len = USB_RX_LEN;
     if(len == (sizeof(USB_SETUP_REQ)))
@@ -350,33 +350,34 @@ void USB_EP0_Setup()
     }
 }
 
-static void USB_EP0_IN()
+static void usb_ep0_in(void)
 {
-    switch(SetupReq)
-    {
-        case USB_GET_DESCRIPTOR:
-        {
-            uint8_t len = SetupLen >= DEFAULT_ENDP0_SIZE ? DEFAULT_ENDP0_SIZE : SetupLen;                                 //send length
-            cpy_desc_Ep0(len);
+	switch (SetupReq) {
+	case USB_GET_DESCRIPTOR: {
+		uint8_t len =
+				SetupLen >= DEFAULT_ENDP0_SIZE ? DEFAULT_ENDP0_SIZE : SetupLen; //send length
+		cpy_desc_Ep0(len);
 
-            SetupLen -= len;
-            pDescr += len;
-            UEP0_T_LEN = len;
-            UEP0_CTRL ^= bUEP_T_TOG;                    //Switch between DATA0 and DATA1
-        }
-            break;
-        case USB_SET_ADDRESS:
-            USB_DEV_AD = USB_DEV_AD & bUDA_GP_BIT | SetupLen;
-            UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-            break;
-        default:
-            UEP0_T_LEN = 0;                                                      // End of transaction
-            UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-            break;
-    }
+		SetupLen -= len;
+		pDescr += len;
+		UEP0_T_LEN = len;
+		//Switch between DATA0 and DATA1
+		UEP0_CTRL ^= bUEP_T_TOG;
+	}
+		break;
+	case USB_SET_ADDRESS:
+		USB_DEV_AD = USB_DEV_AD & bUDA_GP_BIT | SetupLen;
+		UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
+		break;
+	default:
+		UEP0_T_LEN = 0;
+		// End of transaction
+		UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
+		break;
+	}
 }
 
-static void USB_EP0_OUT()
+static void usb_ep0_out(void)
 {
 	UEP0_T_LEN = 0;
 	//Respond Nak
@@ -386,74 +387,96 @@ static void USB_EP0_OUT()
 #pragma save
 #pragma nooverlay
 //inline not really working in multiple files in SDCC
-void USBInterrupt(void)
+void usb_interrupt(void)
 {
-	if(UIF_TRANSFER) {
+	if (UIF_TRANSFER) {
 		// Dispatch to service functions
-		uint8_t callIndex=USB_INT_ST & MASK_UIS_ENDP;
+		uint8_t callIndex = USB_INT_ST & MASK_UIS_ENDP;
 		switch (USB_INT_ST & MASK_UIS_TOKEN) {
-            case UIS_TOKEN_OUT:
-            {//SDCC will take IRAM if array of function pointer is used.
-                switch (callIndex) {
-                    case 0: EP0_OUT_Callback(); break;
-                    case 1: USB_EP1_OUT(); break;
-                    case 2: break;
-                    case 3: break;
-                    case 4: break;
-                    default: break;
-                }
-            }
-                break;
-            case UIS_TOKEN_IN:
-            {//SDCC will take IRAM if array of function pointer is used.
-                switch (callIndex) {
-                    case 0: EP0_IN_Callback(); break;
-                    case 1: break;
-                    case 2: USB_EP2_IN(); break;
-                    case 3: break;
-                    case 4: break;
-                    default: break;
-                }
-            }
-                break;
-            case UIS_TOKEN_SETUP:
-            {
-                switch (callIndex) {
-                    case 0: USB_EP0_Setup(); break;
-                    default: break;
-                }
-            }
-                break;
-            default:
-                break;
-        }
-        
-        UIF_TRANSFER = 0;               // Clear interrupt flag
-    }
+		case UIS_TOKEN_OUT:
+		{
+			//SDCC will take IRAM if array of function pointer is used.
+			switch (callIndex) {
+			case 0:
+				usb_ep0_out();
+				break;
+			case 1:
+				USB_EP1_OUT();
+				break;
+			case 2:
+				break;
+			case 3:
+				break;
+			case 4:
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+		//SDCC will take IRAM if array of function pointer is used.
+		case UIS_TOKEN_IN: {
+			switch (callIndex) {
+			case 0:
+				usb_ep0_in();
+				break;
+			case 1:
+				break;
+			case 2:
+				USB_EP2_IN();
+				break;
+			case 3:
+				break;
+			case 4:
+				break;
+			default:
+				break;
+			}
+		}
+			break;
+		case UIS_TOKEN_SETUP: {
+			switch (callIndex) {
+			case 0:
+				usb_ep0_setup();
+				break;
+			default:
+				break;
+			}
+		}
+			break;
+		default:
+			break;
+		}
+
+		// Clear interrupt flag
+		UIF_TRANSFER = 0;
+	}
     
     // Device mode USB bus reset
-    if(UIF_BUS_RST) {
-        UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-        UEP1_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK;                //Endpoint 1 automatically flips the sync flag, and IN transaction returns NAK
-        UEP2_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_ACK;        //Endpoint 2 automatically flips the sync flag, IN transaction returns NAK, OUT returns ACK
-        //UEP4_CTRL = UEP_T_RES_NAK | UEP_R_RES_ACK;  //bUEP_AUTO_TOG only work for endpoint 1,2,3
-        
-        USB_DEV_AD = 0;
-        UIF_SUSPEND = 0;
-        UIF_TRANSFER = 0;
-        UIF_BUS_RST = 0;                                                        // Clear interrupt flag
-        
-    }
+	if (UIF_BUS_RST) {
+		UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
+		//Endpoint 1 automatically flips the sync flag, and IN transaction returns NAK
+		UEP1_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK;
+		//Endpoint 2 automatically flips the sync flag, IN transaction returns NAK, OUT returns ACK
+		UEP2_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_ACK;
+		//UEP4_CTRL = UEP_T_RES_NAK | UEP_R_RES_ACK;  //bUEP_AUTO_TOG only work for endpoint 1,2,3
+
+		USB_DEV_AD = 0;
+		UIF_SUSPEND = 0;
+		UIF_TRANSFER = 0;
+		// Clear interrupt flag
+		UIF_BUS_RST = 0;
+	}
     
     // USB bus suspend / wake up
-    if (UIF_SUSPEND) {
-        UIF_SUSPEND = 0;
-        if ( USB_MIS_ST & bUMS_SUSPEND ) {
-           // suspend not supported 
-        } else {    // Unexpected interrupt, not supposed to happen !
-            USB_INT_FG = 0xFF;        // Clear interrupt flag
-        }
-    }
+	if (UIF_SUSPEND) {
+		UIF_SUSPEND = 0;
+		if (USB_MIS_ST & bUMS_SUSPEND) {
+			// suspend not supported
+		} else {    // Unexpected interrupt, not supposed to happen !
+			USB_INT_FG = 0xFF;        // Clear interrupt flag
+		}
+	}
 }
 #pragma restore
 

@@ -7,15 +7,7 @@
 
 #define UsbSetupBuf     ((PUSB_SETUP_REQ)Ep0Buffer)
 
-// Out
-#define EP0_OUT_Callback USB_EP0_OUT
-
-// IN
-#define EP0_IN_Callback USB_EP0_IN
-
-void USBInterrupt(void);
-
+void usb_interrupt(void);
 void usb_configure(void);
 
 #endif
-
