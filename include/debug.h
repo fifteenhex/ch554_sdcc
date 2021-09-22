@@ -21,8 +21,8 @@ void mDelaymS (uint16_t n); // Delay in mS
 /*******************************************************************************
 * Function Name  : CfgFsys( )
 * Description  : CH554 clock selection and configuration function, Fsys 6MHz is used by default, FREQ_SYS can be passed
-                 CLOCK_CFG configuration, the formula is as follows:
-                 Fsys = (Fosc * 4 / (CLOCK_CFG & MASK_SYS_CK_SEL); the specific clock needs to be configured by yourself
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½CLOCK_CFG configuration, the formula is as follows:
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Fsys = (Fosc * 4 / (CLOCK_CFG & MASK_SYS_CK_SEL); the specific clock needs to be configured by yourself
 *******************************************************************************/ 
 inline void CfgFsys( )  
 {
@@ -67,7 +67,8 @@ inline void CH554UART0Alter()
 
 /*******************************************************************************
 * Function Name  : mInitSTDIO()
-* Description    : CH554 serial port 0 is initialized, T1 is used as the baud rate generator of UART0 by default, T2 can also be used
+* Description    : CH554 serial port 0 is initialized, T1 is used as the baud
+				   rate generator of UART0 by default, T2 can also be used
 Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â As a baud rate generator
 *******************************************************************************/
 inline void	mInitSTDIO( )
@@ -86,7 +87,8 @@ inline void	mInitSTDIO( )
     // TCLK = 0;
 
     PCON = SMOD;
-    x = 10 * FREQ_SYS / UART0_BAUD / 16;                                       //If you change the main frequency, be careful not to overflow the value of x
+    //If you change the main frequency, be careful not to overflow the value of x
+    x = 10 * FREQ_SYS / UART0_BAUD / 16;
     x2 = x % 10;
     x /= 10;
     if ( x2 >= 5 ) x ++;                                                       //rounding
@@ -138,7 +140,7 @@ inline void CH554UART1Alter()
 * Function Name  : UART1Setup()
 * Description    : CH554ä¸²å£1åˆå§‹åŒ–
 *******************************************************************************/
-inline void	UART1Setup()
+inline void	UART1Setup(void)
 {
     U1SM0 = 0;                          //UART1é€‰æ‹©8ä½æ•°æ®ä½
     U1SMOD = 1;                         //å¿«é€Ÿæ¨¡å¼
