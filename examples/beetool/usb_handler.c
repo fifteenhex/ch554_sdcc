@@ -17,11 +17,13 @@ __xdata uint8_t  epbuffer_ep1[CONFIG_EP1_BUFFERSZ];
 #endif
 
 #ifdef CONFIG_EP2_ENABLE
-__xdata uint8_t  epbuffer_ep2[CONFIG_EP3_BUFFERSZ];
+__xdata uint8_t  epbuffer_ep2[CONFIG_EP2_BUFFERSZ * 4];
 #endif
+
 #ifdef CONFIG_EP3_ENABLE
-__xdata uint8_t  Ep3Buffer[CONFIG_EP3_BUFFERSZ];
+__xdata uint8_t  epbuffer_ep3[CONFIG_EP3_BUFFERSZ];
 #endif
+
 #ifdef CONFIG_EP4_ENABLE
 __xdata uint8_t  Ep4Buffer[CONFIG_EP4_BUFFERSZ];
 #endif
@@ -412,96 +414,150 @@ static inline int usb_interrupt_tx(void)
 
 	usb_stats.tx++;
 
-		// Dispatch to service functions
-		uint8_t callIndex = USB_INT_ST & MASK_UIS_ENDP;
-		switch (USB_INT_ST & MASK_UIS_TOKEN) {
-		case UIS_TOKEN_OUT:
-		{
-			//SDCC will take IRAM if array of function pointer is used.
-			switch (callIndex) {
-			case 0:
-				CALLENDPOINT(0, out);
-				break;
-			case 1:
+	/* Discard unsynchronized packets */
+	//if (!U_TOG_OK) {
+	//	usb_stats.tog_ng++;
+	//	return 1;
+	//}
+	// Dispatch to service functions
+	uint8_t callIndex = USB_INT_ST & MASK_UIS_ENDP;
+	switch (USB_INT_ST & MASK_UIS_TOKEN) {
+	case UIS_TOKEN_OUT: {
+		//SDCC will take IRAM if array of function pointer is used.
+		switch (callIndex) {
+		case 0:
+			CALLENDPOINT(0, out)
+			;
+			break;
+		case 1:
 #ifdef CONFIG_EP1_OUT
 				CALLENDPOINT(1, out);
 #else
-				BADENDPOINT();
+			BADENDPOINT()
+			;
 #endif
-				break;
-			case 2:
+			break;
+		case 2:
 #ifdef CONFIG_EP2_OUT
-				CALLENDPOINT(2, out);
+			CALLENDPOINT(2, out)
+			;
 #else
 				BADENDPOINT();
 #endif
-				break;
-			case 3:
+			break;
+		case 3:
 #ifdef CONFIG_EP3_OUT
 				CALLENDPOINT(3, out);
 #else
-				BADENDPOINT();
+			BADENDPOINT()
+			;
 #endif
-				break;
-			case 4:
-				break;
-			default:
-				break;
-			}
-		}
-		break;
-		//SDCC will take IRAM if array of function pointer is used.
-		case UIS_TOKEN_IN: {
-			switch (callIndex) {
-			case 0:
-				CALLENDPOINT(0, in);
-				break;
-			case 1:
-#ifdef CONFIG_EP1_IN
-				CALLENDPOINT(1, in);
-#else
-				BADENDPOINT();
-#endif
-				break;
-			case 2:
-#ifdef CONFIG_EP2_IN
-				CALLENDPOINT(2, in);
-#else
-				BADENDPOINT();
-#endif
-				break;
-			case 3:
-#ifdef CONFIG_EP3_IN
-				CALLENDPOINT(3, in);
-#else
-				BADENDPOINT();
-#endif
-				break;
-			case 4:
-				break;
-			default:
-				break;
-			}
-		}
 			break;
-		case UIS_TOKEN_SETUP: {
-			switch (callIndex) {
-			case 0:
-				usb_ep0_setup();
-				break;
-			default:
-				break;
-			}
-		}
+		case 4:
 			break;
 		default:
 			break;
 		}
+	}
+		break;
+		//SDCC will take IRAM if array of function pointer is used.
+	case UIS_TOKEN_IN: {
+		switch (callIndex) {
+		case 0:
+			CALLENDPOINT(0, in)
+			;
+			break;
+		case 1:
+#ifdef CONFIG_EP1_IN
+			CALLENDPOINT(1, in)
+			;
+#else
+				BADENDPOINT();
+#endif
+			break;
+		case 2:
+#ifdef CONFIG_EP2_IN
+			CALLENDPOINT(2, in)
+			;
+#else
+				BADENDPOINT();
+#endif
+			break;
+		case 3:
+#ifdef CONFIG_EP3_IN
+				CALLENDPOINT(3, in);
+#else
+			BADENDPOINT()
+			;
+#endif
+			break;
+		case 4:
+			break;
+		default:
+			break;
+		}
+	}
+		break;
+	case UIS_TOKEN_SETUP: {
+		switch (callIndex) {
+		case 0:
+			usb_ep0_setup();
+			break;
+		default:
+			break;
+		}
+	}
+		break;
+	default:
+		break;
+	}
 
-		// Clear interrupt flag
-		UIF_TRANSFER = 0;
+	/* Clear interrupt flag */
+	UIF_TRANSFER = 0;
 
-		return 1;
+	return 1;
+}
+
+static inline int usb_interrupt_rst(void)
+{
+    // Device mode USB bus reset
+	if (!UIF_BUS_RST)
+		return 0;
+
+	usb_stats.rst++;
+
+	UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
+	//Endpoint 1 automatically flips the sync flag, and IN transaction returns NAK
+	UEP1_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK;
+	//Endpoint 2 automatically flips the sync flag, IN transaction returns NAK, OUT returns ACK
+	UEP2_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_ACK;
+	//UEP4_CTRL = UEP_T_RES_NAK | UEP_R_RES_ACK;  //bUEP_AUTO_TOG only work for endpoint 1,2,3
+
+	USB_DEV_AD = 0;
+	UIF_SUSPEND = 0;
+	UIF_TRANSFER = 0;
+	// Clear interrupt flag
+	UIF_BUS_RST = 0;
+
+	return 1;
+}
+
+static inline int usb_interrupt_sus(void)
+{
+    // USB bus suspend / wake up
+	if (!UIF_SUSPEND)
+		return 0;
+
+	usb_stats.sus++;
+
+	UIF_SUSPEND = 0;
+	if (USB_MIS_ST & bUMS_SUSPEND) {
+		// suspend not supported
+	} else {    // Unexpected interrupt, not supposed to happen !
+		USB_INT_FG = 0xFF;        // Clear interrupt flag
+	}
+
+	return 1;
 }
 
 #pragma save
@@ -514,38 +570,8 @@ void usb_interrupt(void)
 
 	handled |= usb_interrupt_fifo_ov();
 	handled |= usb_interrupt_tx();
-    
-    // Device mode USB bus reset
-	if (UIF_BUS_RST) {
-		handled = 1;
-		usb_stats.rst++;
-
-		UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-		//Endpoint 1 automatically flips the sync flag, and IN transaction returns NAK
-		UEP1_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK;
-		//Endpoint 2 automatically flips the sync flag, IN transaction returns NAK, OUT returns ACK
-		UEP2_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_ACK;
-		//UEP4_CTRL = UEP_T_RES_NAK | UEP_R_RES_ACK;  //bUEP_AUTO_TOG only work for endpoint 1,2,3
-
-		USB_DEV_AD = 0;
-		UIF_SUSPEND = 0;
-		UIF_TRANSFER = 0;
-		// Clear interrupt flag
-		UIF_BUS_RST = 0;
-	}
-    
-    // USB bus suspend / wake up
-	if (UIF_SUSPEND) {
-		handled = 1;
-		usb_stats.sus++;
-
-		UIF_SUSPEND = 0;
-		if (USB_MIS_ST & bUMS_SUSPEND) {
-			// suspend not supported
-		} else {    // Unexpected interrupt, not supposed to happen !
-			USB_INT_FG = 0xFF;        // Clear interrupt flag
-		}
-	}
+	handled |= usb_interrupt_rst();
+	handled |= usb_interrupt_sus();
 
 	if(!handled)
 		usb_stats.spurious++;
@@ -587,14 +613,19 @@ void usb_configure()
 #ifdef CONFIG_EP2_ENABLE
 	/* Endpoint data transfer address */
 	UEP2_DMA = (uint16_t) epbuffer_ep2;
-	//Endpoint 2 automatically flips the sync flag, IN & OUT transaction returns NAK
-	UEP2_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_NAK;
+
+	UEP2_CTRL =	UEP_T_RES_NAK | UEP_R_RES_NAK;
 	UEP2_T_LEN = 0;
+
+#ifdef CONFIG_EP2_OUT
+	UEP2_3_MOD |= bUEP2_RX_EN;
+#endif
+
 #endif
 
 #ifdef CONFIG_EP3_ENABLE
 	/* Endpoint data transfer address */
-	UEP3_DMA = (uint16_t) Ep3Buffer;
+	UEP3_DMA = (uint16_t) epbuffer_ep3;
 	//Endpoint 2 automatically flips the sync flag, IN & OUT transaction returns NAK
 	UEP3_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_NAK;
 	UEP3_T_LEN = 0;
@@ -609,15 +640,18 @@ void usb_configure()
 #endif
 
 	UEP4_1_MOD = bUEP1_RX_EN;
-	UEP2_3_MOD = bUEP2_TX_EN;
 }
 
+#ifdef CONFIG_USB_PKTDBG
 void usb_printstats()
 {
 	printf("irqs: %u\r\n", usb_stats.irqs);
 	printf("\tovr: %u\r\n", usb_stats.ovr);
+
 	printf("\ttx: %u\r\n", usb_stats.tx);
 	printf("\t\tbad ep: %u\r\n", usb_stats.bad_ep);
+	printf("\t\ttog ng: %u\r\n", usb_stats.tog_ng);
+
 	printf("\trst: %u\r\n", usb_stats.rst);
 	printf("\tsus: %u\r\n", usb_stats.sus);
 	printf("\tspurious: %u\r\n", usb_stats.spurious);
@@ -645,3 +679,8 @@ void usb_printstats()
 	printf("EP3: out %u\r\n", usb_stats.out_ep3);
 #endif
 }
+#else
+void usb_printstats()
+{
+}
+#endif

@@ -13,12 +13,19 @@
 #include "config.h"
 #include "usb_handler.h"
 
+// CRAP
 //Bytes of received data on USB endpoint
 volatile uint8_t USBByteCountEP1 = 0;
 
-// for EP1 OUT double-buffering 
+// for EP1 OUT double-buffering
 volatile uint8_t EP1_buffs_avail = 2;
 __bit EP1_buf_toggle = 0;
+// CRAP
+
+
+static uint8_t flags;
+/* Data from the host is available */
+#define FLAG_CDC_DATA_OUT	1
 
 static void usb_irq(void) __interrupt (INT_NO_USB)
 {
@@ -37,8 +44,7 @@ void usb_ep1_out(void)
 {
 	CH554UART1SendByte('1');
 
-	// Discard unsynchronized packets
-	if (U_TOG_OK) {
+
 		USBByteCountEP1 = USB_RX_LEN;
 		if (USBByteCountEP1) {
 			//Respond NAK. Let main change response after handling.
@@ -53,19 +59,51 @@ void usb_ep1_out(void)
 			//    UEP1_DMA = (uint16_t) Ep1Buffer;
 
 		}
-	}
 }
 
 void usb_ep2_in(void)
 {
-	UEP2_T_LEN = 0;                     // No data to send anymore
-	UEP2_CTRL = UEP2_CTRL & ~ MASK_UEP_T_RES | UEP_T_RES_NAK;           //Respond NAK by default
+	// No data to send anymore
+	UEP2_T_LEN = 0;
+	//Respond NAK by default
+	UEP2_CTRL = UEP2_CTRL & ~ MASK_UEP_T_RES | UEP_T_RES_NAK;
 }
 
+static uint8_t cdc_data_len;
 void usb_ep2_out(void)
 {
+	UEP2_CTRL = UEP2_CTRL & ~MASK_UEP_R_RES | UEP_R_RES_NAK;
+	cdc_data_len = USB_RX_LEN;
+	flags |= FLAG_CDC_DATA_OUT;
 }
 
+static void cdc_data_out(void)
+{
+	if(!(flags & FLAG_CDC_DATA_OUT))
+		return;
+
+#ifdef CONFIG_CDC_DEBUG
+	usb_print_epbuffer(2);
+
+	printf("cdc data - len: %d\r\n", cdc_data_len);
+	for(int i = 0; i < cdc_data_len; i++)
+		printf("%02x ", epbuffer_ep2[i]);
+	printf("\r\n");
+#endif
+
+/*
+ * if debugging is enabled sending data will
+ * crap up the output so don't.
+ */
+#ifndef CONFIG_CDC_DEBUG
+	for(int i = 0; i < cdc_data_len; i++) {
+		printf("%c", epbuffer_ep2[i]);
+	}
+#endif
+
+	flags &= ~FLAG_CDC_DATA_OUT;
+	UEP2_CTRL = UEP2_CTRL & ~ MASK_UEP_R_RES | UEP_R_RES_ACK;
+}
 
 void main()
 {
@@ -77,39 +115,17 @@ void main()
 
 	UART1Setup();
 
-
-	//LED = 1;
-
 	uint8_t i = 0;
 
+	int loop = 0;
 
 	while (1) {
-		//printf("shizzle\n");
-		//printf("main loop\n");
-#if 0
-		uint8_t response_len;
-        // process if a DAP packet is received, and TxBuf is empty
-        // save ByteCountEP1?
-        if (USBByteCountEP1 && !UEP2_T_LEN) {
-            __xdata uint8_t* RxPkt = DAP_RxBuf;
-            if (--EP1_buffs_avail) {
-                USBByteCountEP1 = 0 ;
-                // Rx another packet while DAP_Thread runs
-                UEP1_CTRL = UEP1_CTRL & ~ MASK_UEP_R_RES | UEP_R_RES_ACK;
-            }
+		cdc_data_out();
 
-            //UEP2_T_LEN = response_len;
-            // enable interrupt IN response
-            UEP2_T_LEN = 64;            // hangs on Windoze < 64
-            UEP2_CTRL = UEP2_CTRL & ~ MASK_UEP_T_RES | UEP_T_RES_ACK;
-
-            // enable receive
-            EP1_buffs_avail++;
-            UEP1_CTRL = UEP1_CTRL & ~ MASK_UEP_R_RES | UEP_R_RES_ACK;
-        }
-#endif
-
-		mDelaymS(5000);
-		usb_printstats();
-    }
+		if (loop++ % 5000 == 0) {
+			usb_printstats();
+			LED = !LED;
+			mDelaymS(500);
+		}
+	}
 }
