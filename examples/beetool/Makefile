@@ -8,7 +8,7 @@ XRAM_SIZE = 0x0300
 XRAM_LOC = 0x0100
 
 # no initialized data in xram
-EXTRA_FLAGS = --no-xinit-opt
+EXTRA_FLAGS = --no-xinit-opt #--Werror
 
 C_FILES = \
     $(wildcard *.c) \

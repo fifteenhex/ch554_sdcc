@@ -1,30 +1,32 @@
-#include "usb_handler.h"
-
 #include <string.h>
-
+#include <stdio.h>
 #include <ch554.h>
 #include <ch554_usb.h>
+
 #include "config.h"
+#include "usb_handler.h"
 #include "usb_descriptor.h"
 
-//HID functions:
-void USB_EP2_IN();
-void USB_EP1_OUT();
+#define UsbSetupBuf     ((PUSB_SETUP_REQ)epbuffer_ep0)
 
 //on page 47 of data sheet, the receive buffer need to be min(possible packet size+2,64)
-__xdata uint8_t  Ep0Buffer[DEFAULT_ENDP0_SIZE + 2];
+__xdata uint8_t  epbuffer_ep0[DEFAULT_ENDP0_SIZE + 2];
+
 #ifdef CONFIG_EP1_ENABLE
-__xdata uint8_t  Ep1Buffer[HID_PKT_SIZ * 2];    // EP1 OUT*2
+__xdata uint8_t  epbuffer_ep1[CONFIG_EP1_BUFFERSZ];
 #endif
+
 #ifdef CONFIG_EP2_ENABLE
-__xdata uint8_t  Ep2Buffer[HID_PKT_SIZ];
+__xdata uint8_t  epbuffer_ep2[CONFIG_EP3_BUFFERSZ];
 #endif
 #ifdef CONFIG_EP3_ENABLE
-__xdata uint8_t  Ep3Buffer[HID_PKT_SIZ];
+__xdata uint8_t  Ep3Buffer[CONFIG_EP3_BUFFERSZ];
 #endif
 #ifdef CONFIG_EP4_ENABLE
-__xdata uint8_t  Ep4Buffer[HID_PKT_SIZ];
+__xdata uint8_t  Ep4Buffer[CONFIG_EP4_BUFFERSZ];
 #endif
+
+__xdata struct usb_stats usb_stats = { 0 };
 
 uint8_t SetupLen;
 uint8_t SetupReq,UsbConfig;
@@ -39,17 +41,17 @@ inline void NOP_Process(void) {}
 #pragma callee_saves cpy_desc_Ep0
 void cpy_desc_Ep0(uint8_t len) __naked
 {
-    len;            // stop unused arg warning
-    __asm
-    xch A, _DPL     ; ACC = len
-    inc _XBUS_AUX
-    mov DPL, #_Ep0Buffer
-    mov DPH, #(_Ep0Buffer >> 8)
-    dec _XBUS_AUX
-    mov DPL, _pDescr
-    mov DPH, (_pDescr + 1)
-    sjmp _ccpyx
-    __endasm;
+	len;            // stop unused arg warning
+	__asm
+	xch A, _DPL     ; ACC = len
+	inc _XBUS_AUX
+	mov DPL, #_epbuffer_ep0
+	mov DPH, #(_epbuffer_ep0 >> 8)
+	dec _XBUS_AUX
+	mov DPL, _pDescr
+	mov DPH, (_pDescr + 1)
+	sjmp _ccpyx
+	__endasm;
 }
 
 // copy code to xram 
@@ -57,18 +59,18 @@ void cpy_desc_Ep0(uint8_t len) __naked
 #pragma callee_saves ccpyx
 void ccpyx(__code char* src)
 {
-    src;            // stop unused arg warning
-    __asm
-    push ar7
-    xch A, R7
-    01$:
-    clr A
-    movc A, @A+DPTR
-    inc DPTR
-    .DB  0xA5       ;MOVX @DPTR1,A & INC DPTR1
-    djnz R7, 01$
-    pop ar7
-    __endasm;
+	src;            // stop unused arg warning
+	__asm
+	push ar7
+	xch A, R7
+	01$:
+	clr A
+	movc A, @A+DPTR
+	inc DPTR
+	.DB  0xA5       ;MOVX @DPTR1,A & INC DPTR1
+	djnz R7, 01$
+	pop ar7
+	__endasm;
 }
 
 static void usb_ep0_setup(void)
@@ -177,7 +179,7 @@ static void usb_ep0_setup(void)
                     SetupLen = UsbSetupBuf->wValueL;                              // Save the assigned address
                     break;
                 case USB_GET_CONFIGURATION:
-                    Ep0Buffer[0] = UsbConfig;
+                    epbuffer_ep0[0] = UsbConfig;
                     if ( SetupLen >= 1 )
                     {
                         len = 1;
@@ -311,8 +313,8 @@ static void usb_ep0_setup(void)
                     }
                     break;
                 case USB_GET_STATUS:
-                    Ep0Buffer[0] = 0x00;
-                    Ep0Buffer[1] = 0x00;
+                    epbuffer_ep0[0] = 0x00;
+                    epbuffer_ep0[1] = 0x00;
                     if ( SetupLen >= 2 )
                     {
                         len = 2;
@@ -384,12 +386,32 @@ static void usb_ep0_out(void)
 	UEP0_CTRL |= UEP_R_RES_ACK | UEP_T_RES_NAK;
 }
 
-#pragma save
-#pragma nooverlay
-//inline not really working in multiple files in SDCC
-void usb_interrupt(void)
+#define ENDPOINT_STAT(which, direction) direction##_ep##which
+
+#define CALLENDPOINT(which, direction)			\
+{												\
+	usb_stats.ENDPOINT_STAT(which, direction)++;	\
+	usb_ep##which##_##direction();				\
+}
+
+#define BADENDPOINT() usb_stats.bad_ep++;
+
+static inline int usb_interrupt_fifo_ov(void)
 {
-	if (UIF_TRANSFER) {
+	if (!UIF_FIFO_OV)
+		return 0;
+
+	usb_stats.ovr++;
+	return 1;
+}
+
+static inline int usb_interrupt_tx(void)
+{
+	if (!UIF_TRANSFER)
+		return 0;
+
+	usb_stats.tx++;
+
 		// Dispatch to service functions
 		uint8_t callIndex = USB_INT_ST & MASK_UIS_ENDP;
 		switch (USB_INT_ST & MASK_UIS_TOKEN) {
@@ -398,14 +420,28 @@ void usb_interrupt(void)
 			//SDCC will take IRAM if array of function pointer is used.
 			switch (callIndex) {
 			case 0:
-				usb_ep0_out();
+				CALLENDPOINT(0, out);
 				break;
 			case 1:
-				USB_EP1_OUT();
+#ifdef CONFIG_EP1_OUT
+				CALLENDPOINT(1, out);
+#else
+				BADENDPOINT();
+#endif
 				break;
 			case 2:
+#ifdef CONFIG_EP2_OUT
+				CALLENDPOINT(2, out);
+#else
+				BADENDPOINT();
+#endif
 				break;
 			case 3:
+#ifdef CONFIG_EP3_OUT
+				CALLENDPOINT(3, out);
+#else
+				BADENDPOINT();
+#endif
 				break;
 			case 4:
 				break;
@@ -418,14 +454,28 @@ void usb_interrupt(void)
 		case UIS_TOKEN_IN: {
 			switch (callIndex) {
 			case 0:
-				usb_ep0_in();
+				CALLENDPOINT(0, in);
 				break;
 			case 1:
+#ifdef CONFIG_EP1_IN
+				CALLENDPOINT(1, in);
+#else
+				BADENDPOINT();
+#endif
 				break;
 			case 2:
-				USB_EP2_IN();
+#ifdef CONFIG_EP2_IN
+				CALLENDPOINT(2, in);
+#else
+				BADENDPOINT();
+#endif
 				break;
 			case 3:
+#ifdef CONFIG_EP3_IN
+				CALLENDPOINT(3, in);
+#else
+				BADENDPOINT();
+#endif
 				break;
 			case 4:
 				break;
@@ -450,10 +500,26 @@ void usb_interrupt(void)
 
 		// Clear interrupt flag
 		UIF_TRANSFER = 0;
-	}
+
+		return 1;
+}
+
+#pragma save
+#pragma nooverlay
+//inline not really working in multiple files in SDCC
+void usb_interrupt(void)
+{
+	uint8_t handled = 0;
+	usb_stats.irqs++;
+
+	handled |= usb_interrupt_fifo_ov();
+	handled |= usb_interrupt_tx();
     
     // Device mode USB bus reset
 	if (UIF_BUS_RST) {
+		handled = 1;
+		usb_stats.rst++;
+
 		UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
 		//Endpoint 1 automatically flips the sync flag, and IN transaction returns NAK
 		UEP1_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK;
@@ -470,6 +536,9 @@ void usb_interrupt(void)
     
     // USB bus suspend / wake up
 	if (UIF_SUSPEND) {
+		handled = 1;
+		usb_stats.sus++;
+
 		UIF_SUSPEND = 0;
 		if (USB_MIS_ST & bUMS_SUSPEND) {
 			// suspend not supported
@@ -477,6 +546,9 @@ void usb_interrupt(void)
 			USB_INT_FG = 0xFF;        // Clear interrupt flag
 		}
 	}
+
+	if(!handled)
+		usb_stats.spurious++;
 }
 #pragma restore
 
@@ -497,14 +569,14 @@ void usb_configure()
 	EA = 1;                             //Enable global interrupts
 
 	/* configure endpoints */
-	UEP0_DMA = (uint16_t) Ep0Buffer;    //Endpoint 0 data transfer address
+	UEP0_DMA = (uint16_t) epbuffer_ep0;    //Endpoint 0 data transfer address
 	UEP0_T_LEN = 0;
 	//Manual flip, OUT transaction returns ACK, IN transaction returns NAK
 	UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
 
 #ifdef CONFIG_EP1_ENABLE
 	/* Endpoint data transfer address */
-	UEP1_DMA = (uint16_t) Ep1Buffer;
+	UEP1_DMA = (uint16_t) epbuffer_ep1;
 	/* Endpoint 1 automatically flips the sync flag, IN transaction returns NAK,
 	 * OUT returns ACK
 	 */
@@ -514,7 +586,7 @@ void usb_configure()
 
 #ifdef CONFIG_EP2_ENABLE
 	/* Endpoint data transfer address */
-	UEP2_DMA = (uint16_t) Ep2Buffer;
+	UEP2_DMA = (uint16_t) epbuffer_ep2;
 	//Endpoint 2 automatically flips the sync flag, IN & OUT transaction returns NAK
 	UEP2_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_NAK;
 	UEP2_T_LEN = 0;
@@ -538,4 +610,38 @@ void usb_configure()
 
 	UEP4_1_MOD = bUEP1_RX_EN;
 	UEP2_3_MOD = bUEP2_TX_EN;
+}
+
+void usb_printstats()
+{
+	printf("irqs: %u\r\n", usb_stats.irqs);
+	printf("\tovr: %u\r\n", usb_stats.ovr);
+	printf("\ttx: %u\r\n", usb_stats.tx);
+	printf("\t\tbad ep: %u\r\n", usb_stats.bad_ep);
+	printf("\trst: %u\r\n", usb_stats.rst);
+	printf("\tsus: %u\r\n", usb_stats.sus);
+	printf("\tspurious: %u\r\n", usb_stats.spurious);
+	printf("EP0: in %u\r\n", usb_stats.in_ep0);
+	printf("EP0: out %u\r\n", usb_stats.out_ep0);
+
+#ifdef CONFIG_EP1_IN
+	printf("EP1: in %u\r\n", usb_stats.in_ep1);
+#endif
+#ifdef CONFIG_EP1_OUT
+	printf("EP1: out %u\r\n", usb_stats.out_ep1);
+#endif
+
+#ifdef CONFIG_EP2_IN
+	printf("EP2: in %u\r\n", usb_stats.in_ep2);
+#endif
+#ifdef CONFIG_EP2_OUT
+	printf("EP2: out %u\r\n", usb_stats.out_ep2);
+#endif
+
+#ifdef CONFIG_EP3_IN
+	printf("EP3: in %u\r\n", usb_stats.in_ep3);
+#endif
+#ifdef CONFIG_EP3_OUT
+	printf("EP3: out %u\r\n", usb_stats.out_ep3);
+#endif
 }
