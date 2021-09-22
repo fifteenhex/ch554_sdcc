@@ -63,13 +63,18 @@ extern __xdata struct usb_stats usb_stats;
 
 #endif
 
-#define usb_print_epbuffer(which)							\
-{															\
-	printf("endpoint %d buffer:\r\n", which);				\
-	for(int i = 0; i < sizeof(epbuffer_ep##which); i++) {	\
-		printf("%02x ", epbuffer_ep##which[i]);				\
-		if((i + 1) % 16 == 0)								\
-			printf("\r\n");									\
-	}														\
-	printf("\r\n");											\
-}
+#ifdef CONFIG_USB_PKTDBG
+#define usb_print_epbuffer(which)					\
+do									\
+{									\
+	printf("endpoint %d buffer:\r\n", which);			\
+	for(int i = 0; i < sizeof(epbuffer_ep##which); i++) {		\
+		printf("%02x ", epbuffer_ep##which[i]);			\
+		if((i + 1) % 16 == 0)					\
+			printf("\r\n");					\
+	}								\
+	printf("\r\n");							\
+} while(0)
+#else
+#define usb_print_epbuffer(which) do {} while(0)
+#endif

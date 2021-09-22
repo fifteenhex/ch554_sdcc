@@ -3,6 +3,7 @@
 
 //#define CONFIG_USB_PKTDBG
 
+
 #define CONFIG_EP1_ENABLE
 #define CONFIG_EP1_IN
 //#define CONFIG_EP1_OUT
