@@ -9,8 +9,8 @@
 #include "config.h"
 
 struct cdc_stats {
-	uint8_t send_encapsulated_command;
-	uint8_t get_encapsulated_response;
+	uint8_t rx;
+	uint8_t tx;
 };
 
 extern __xdata struct cdc_stats cdc_stats;
@@ -22,5 +22,7 @@ void cdc_main_loop(void);
 #define cdc_setup_class() do { } while (0)
 #define cdc_main_loop() do { } while (0)
 #endif
+
+
 
 #endif

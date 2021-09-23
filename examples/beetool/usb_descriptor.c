@@ -39,11 +39,11 @@ __code struct {
 	USB_ENDP_DESCR cdc_data_in_ep;
 	USB_ENDP_DESCR cdc_data_out_ep;
 	/* i2c */
-	USB_ITF_DESCR i2c_interface;
-	USB_ENDP_DESCR i2c_in_ep;
-	USB_ENDP_DESCR i2c_out_ep;
+	//USB_ITF_DESCR i2c_interface;
+	//USB_ENDP_DESCR i2c_in_ep;
+	//USB_ENDP_DESCR i2c_out_ep;
 } CfgDesc = {
-	.config = CFG_DESCR(3),
+	.config = CFG_DESCR(2),
 	/* cdc control */
 	.cdc_control_interface = INTERF_DESCR(0, 1,USB_DEV_CLASS_COMMUNIC, USB_DEV_SUBCLASS_CDC_ACM),
 	.cdc_header_functional = HEADERFUNCTIONAL_DESCR(),
@@ -56,9 +56,9 @@ __code struct {
 	.cdc_data_in_ep = ENDPOINT_DESCR(2, 1, USB_ENDP_TYPE_BULK),
 	.cdc_data_out_ep = ENDPOINT_DESCR(2, 0, USB_ENDP_TYPE_BULK),
 	/* i2c */
-	.i2c_interface = INTERF_DESCR(2, 2, USB_DESCR_TYP_INTERF, USB_DEV_SUBCLASS_CDC_ACM),
-	.i2c_in_ep = ENDPOINT_DESCR(3, 1, USB_ENDP_TYPE_BULK),
-	.i2c_out_ep = ENDPOINT_DESCR(3, 0, USB_ENDP_TYPE_BULK),
+	//.i2c_interface = INTERF_DESCR(2, 2, USB_DESCR_TYP_INTERF, USB_DEV_SUBCLASS_CDC_ACM),
+	//.i2c_in_ep = ENDPOINT_DESCR(3, 1, USB_ENDP_TYPE_BULK),
+	//.i2c_out_ep = ENDPOINT_DESCR(3, 0, USB_ENDP_TYPE_BULK),
 };
 
 __code uint8_t ReportDesc[] ={

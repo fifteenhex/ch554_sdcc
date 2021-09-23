@@ -10,7 +10,7 @@ __xdata uint8_t epbuffer_ep1[EP1_BUFFER_SZ];
 #endif
 
 #ifdef CONFIG_EP2_ENABLE
-__xdata uint8_t epbuffer_ep2[EP2_BUFFER_SZ];
+__xdata struct ep2_composite epbuffer_ep2_composite;
 #endif
 
 #ifdef CONFIG_EP3_ENABLE
