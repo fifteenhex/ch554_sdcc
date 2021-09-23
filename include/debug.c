@@ -92,28 +92,3 @@ void	mDelaymS( uint16_t n )                                                  // 
 		-- n;
 	}
 }
-
-#define CONFIG_STDIO_UART1
-#ifdef CONFIG_STDIO_UART1
-int	putchar(int ch)
-{
-	CH554UART1SendByte(ch & 0xff);
-	return 0;
-}
-
-int getchar(void)
-{
-	return CH554UART1RcvByte();
-}
-#else
-int putchar(int ch)
-{
-	CH554UART0SendByte(ch & 0xff);
-	return 0;
-}
-
-int getchar(void)
-{
-	return CH554UART0RcvByte();
-}
-#endif

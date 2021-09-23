@@ -84,6 +84,15 @@ endchoice
 
 endmenu
 
+# uart
+menu "uart"
+
+config UART_BUFSZ
+	int "size of each tx and rx buffer"
+	default 32
+
+endmenu
+
 menu "debugging options"
 
 config USB_PKTDBG

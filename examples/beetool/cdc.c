@@ -5,6 +5,7 @@
 #include <ch554.h>
 #include "cdc.h"
 #include "cdc_proto.h"
+#include "uart.h"
 #include "usb_buffers.h"
 #include "usb_handler.h"
 
@@ -92,20 +93,26 @@ static void cdc_data_out(void)
 
 static void cdc_data_in(void)
 {
+	int len = 0;
+
 	/* interrupt hasn't cleared yet */
 	if(in_flags & FLAG_CDC_IN_DATA_READY)
 		return;
 
-	cdc_stat_add(tx, cdc_data_len);
+	if(!uart_rx_have_data())
+		return;
 
 #ifdef CONFIG_CDC_DEBUG
 	printf("cdc: preparing tx\r\n");
 #endif
 
-	in_flags |= FLAG_CDC_IN_DATA_READY;
+	while(uart_rx_have_data())
+		epbuffer_ep2_in[len++] = uart_rx_pop();
 
-	epbuffer_ep2_in[0] = 'B';
-	UEP2_T_LEN = 1;
+	cdc_stat_add(tx, len);
+
+	in_flags |= FLAG_CDC_IN_DATA_READY;
+	UEP2_T_LEN = len;
 	UEP2_CTRL = (UEP2_CTRL & ~MASK_UEP_T_RES) | UEP_T_RES_ACK;
 }
 
@@ -126,7 +133,6 @@ static inline void cdc_print_stats(void)
 void cdc_main_loop()
 {
 	cdc_data_out();
-	if((cdc_stats.rx + 1) % 10 == 0)
-		cdc_data_in();
+	cdc_data_in();
 	cdc_print_stats();
 }

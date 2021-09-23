@@ -13,11 +13,11 @@
 #include "config.h"
 #include "usb_buffers.h"
 #include "usb_handler.h"
+#include "uart.h"
 
-static void usb_irq(void) __interrupt (INT_NO_USB)
-{
-	usb_interrupt();
-}
+/* interrupts */
+#include "uart_int.h"
+#include "usb_int.h"
 
 void usb_ep1_in(void)
 {
@@ -41,6 +41,7 @@ void main()
 	LED = 0;
 
 	UART1Setup();
+	uart_setup();
 
 	uint8_t i = 0;
 
