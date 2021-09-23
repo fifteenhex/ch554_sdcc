@@ -365,12 +365,12 @@ typedef struct _USB_ENDPOINT_DESCR {
 
 typedef USB_ENDP_DESCR __xdata *PXUSB_ENDP_DESCR;
 
-#define ENDPOINT_DESCR(addr, in) \
+#define ENDPOINT_DESCR(addr, in, type)				\
 	{							\
 		.bLength = sizeof(USB_ENDP_DESCR),		\
 		.bDescriptorType = USB_DESCR_TYP_ENDP,		\
 		.bEndpointAddress = (in ? 0x80 : 0) | addr,	\
-		.bmAttributes = USB_ENDP_TYPE_INTER,		\
+		.bmAttributes = type,				\
 		.wMaxPacketSizeL = 64,				\
 		.wMaxPacketSizeH = 0,				\
 		.bInterval = 1,					\

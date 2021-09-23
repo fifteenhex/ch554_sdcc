@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "config.h"
 #include "usb_descriptor.h"
 
 #ifdef CONFIG_EP1_ENABLE
@@ -15,7 +16,14 @@ extern void usb_ep1_out(void);
 #endif
 
 #ifdef CONFIG_EP2_ENABLE
-extern __xdata uint8_t  epbuffer_ep2[CONFIG_EP2_BUFFERSZ * 4];
+
+#if defined(CONFIG_EP2_IN) && defined(CONFIG_EP2_OUT)
+#define EP2_BUFFER_SZ 128
+#else
+#define EP2_BUFFER_SZ 64
+#endif
+
+extern __xdata uint8_t  epbuffer_ep2[EP2_BUFFER_SZ];
 #ifdef CONFIG_EP2_IN
 extern void usb_ep2_in(void);
 #endif
@@ -28,6 +36,7 @@ void usb_interrupt(void);
 void usb_configure(void);
 void usb_printstats(void);
 
+#ifdef CONFIG_USB_PKTDBG
 struct usb_stats {
 	unsigned irqs;
 	/* tx irqs */
@@ -36,6 +45,8 @@ struct usb_stats {
 	uint8_t bad_ep;
 	/* tog_ng */
 	uint8_t tog_ng;
+	/* unhandled */
+	uint8_t unhandled;
 
 
 	uint8_t ovr,rst, sus, spurious;
@@ -43,6 +54,7 @@ struct usb_stats {
 	/* ep0 */
 	uint8_t in_ep0;
 	uint8_t out_ep0;
+	uint8_t setup;
 
 	/* others */
 #ifdef CONFIG_EP1_IN
@@ -61,9 +73,6 @@ struct usb_stats {
 };
 extern __xdata struct usb_stats usb_stats;
 
-#endif
-
-#ifdef CONFIG_USB_PKTDBG
 #define usb_print_epbuffer(which)					\
 do									\
 {									\
@@ -77,4 +86,6 @@ do									\
 } while(0)
 #else
 #define usb_print_epbuffer(which) do {} while(0)
+#endif
+
 #endif

@@ -50,15 +50,15 @@ __code struct {
 	.cdc_acm_functional = ACMFUNCTIONAL_DESCR(0xf),
 	.cdc_union_functional = UNIONFUNCTIONAL_DESCR(0, 1),
 	.cdc_call_management_functional = CALLMANAGEMENTFUNCTIONAL_DESCR(1),
-	.cdc_ctrl_ep = ENDPOINT_DESCR(1, 1),
+	.cdc_ctrl_ep = ENDPOINT_DESCR(1, 1, USB_ENDP_TYPE_INTER),
 	/* cdc data */
 	.cdc_data_interface = INTERF_DESCR(1, 2, USB_DEV_CLASS_CDC_DATA, 0),
-	.cdc_data_in_ep = ENDPOINT_DESCR(2, 1),
-	.cdc_data_out_ep = ENDPOINT_DESCR(2, 0),
+	.cdc_data_in_ep = ENDPOINT_DESCR(2, 1, USB_ENDP_TYPE_BULK),
+	.cdc_data_out_ep = ENDPOINT_DESCR(2, 0, USB_ENDP_TYPE_BULK),
 	/* i2c */
 	.i2c_interface = INTERF_DESCR(2, 2, USB_DESCR_TYP_INTERF, USB_DEV_SUBCLASS_CDC_ACM),
-	.i2c_in_ep = ENDPOINT_DESCR(3, 1),
-	.i2c_out_ep = ENDPOINT_DESCR(3, 0),
+	.i2c_in_ep = ENDPOINT_DESCR(3, 1, USB_ENDP_TYPE_BULK),
+	.i2c_out_ep = ENDPOINT_DESCR(3, 0, USB_ENDP_TYPE_BULK),
 };
 
 __code uint8_t ReportDesc[] ={
