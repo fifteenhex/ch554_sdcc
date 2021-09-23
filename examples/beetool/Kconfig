@@ -1,0 +1,89 @@
+menu "endpoint configuration"
+# endpoint 1
+config EP1_ENABLE
+	bool "Enable endpoint 1"
+
+config EP1_IN
+	bool "Enable IN on endpoint 1"
+	depends on EP1_ENABLE
+
+config EP1_OUT
+	bool "Enable OUT on endpoint 1"
+	depends on EP1_ENABLE
+
+# endpoint 2
+config EP2_ENABLE
+	bool "Enable endpoint 2"
+
+config EP2_IN
+	bool "Enable IN on endpoint 2"
+	depends on EP2_ENABLE
+
+config EP2_OUT
+	bool "Enable OUT on endpoint 2"
+	depends on EP2_ENABLE
+
+# endpoint 3
+config EP3_ENABLE
+	bool "Enable endpoint 3"
+
+config EP3_IN
+	bool "Enable IN on endpoint 3"
+	depends on EP3_ENABLE
+
+config EP3_OUT
+	bool "Enable OUT on endpoint 3"
+	depends on EP3_ENABLE
+
+# endpoint 4
+config EP4_ENABLE
+	bool "Enable endpoint 4"
+
+config EP4_IN
+	bool "Enable IN on endpoint 4"
+	depends on EP4_ENABLE
+
+config EP4_OUT
+	bool "Enable OUT on endpoint 4"
+	depends on EP4_ENABLE
+endmenu
+
+menu "prebaked protocols"
+
+config CDC_ACM
+	bool "CDC ACM serial port"
+
+choice
+	prompt "CDC control endpoint"
+	depends on CDC_ACM
+	
+config CDC_ACM_CTRL_EP1
+	bool "endpoint 1"
+
+config CDC_ACM_CTRL_EP2
+	bool "endpoint 2"
+	
+config CDC_ACM_CTRL_EP3
+	bool "endpoint 3"
+
+endchoice	
+
+choice
+	prompt "CDC data endpoint"
+	depends on CDC_ACM
+	
+config CDC_ACM_DATA_EP1
+	bool "endpoint 1"
+	depends on !CDC_ACM_CTRL_EP1
+
+config CDC_ACM_DATA_EP2
+	bool "endpoint 2"
+	depends on !CDC_ACM_CTRL_EP2
+	
+endchoice
+
+endmenu
+
+menu "debugging options"
+
+endmenu

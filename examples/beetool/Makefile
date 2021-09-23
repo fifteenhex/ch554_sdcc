@@ -20,3 +20,10 @@ pythonflash:
 pre-flash:
 
 include ../Makefile.include
+
+menuconfig:
+	KCONFIG_AUTOHEADER=./autoconf.h kconfig mconf Kconfig
+
+mmm:
+	- rm -r include/
+	~/coding/breadbee/breadbee_dev/linux/scripts/kconfig/conf Kconfig

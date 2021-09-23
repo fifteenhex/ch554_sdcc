@@ -193,30 +193,38 @@ static inline int usb_ep0_setup_clear_feature(void)
 	{
 		switch ( UsbSetupBuf->wIndexL)
 		{
-		case 0x84:
-			UEP4_CTRL = UEP4_CTRL & ~( bUEP_T_TOG | MASK_UEP_T_RES)| UEP_T_RES_NAK;
-			break;
-		case 0x04:
-			UEP4_CTRL = UEP4_CTRL & ~( bUEP_R_TOG | MASK_UEP_R_RES)| UEP_R_RES_ACK;
-			break;
-		case 0x83:
-			UEP3_CTRL = UEP3_CTRL & ~( bUEP_T_TOG | MASK_UEP_T_RES)| UEP_T_RES_NAK;
-			break;
-		case 0x03:
-			UEP3_CTRL = UEP3_CTRL & ~( bUEP_R_TOG | MASK_UEP_R_RES)| UEP_R_RES_ACK;
-			break;
-		case 0x82:
-			UEP2_CTRL = UEP2_CTRL & ~( bUEP_T_TOG | MASK_UEP_T_RES)| UEP_T_RES_NAK;
-			break;
-		case 0x02:
-			UEP2_CTRL = UEP2_CTRL & ~( bUEP_R_TOG | MASK_UEP_R_RES)| UEP_R_RES_ACK;
-			break;
+#ifdef CONFIG_EP1_ENABLE
 		case 0x81:
 			UEP1_CTRL = UEP1_CTRL & ~( bUEP_T_TOG | MASK_UEP_T_RES)| UEP_T_RES_NAK;
 			break;
 		case 0x01:
 			UEP1_CTRL = UEP1_CTRL & ~( bUEP_R_TOG | MASK_UEP_R_RES)| UEP_R_RES_ACK;
 			break;
+#endif
+#ifdef CONFIG_EP2_ENABLE
+		case 0x82:
+			UEP2_CTRL = UEP2_CTRL & ~( bUEP_T_TOG | MASK_UEP_T_RES)| UEP_T_RES_NAK;
+			break;
+		case 0x02:
+			UEP2_CTRL = UEP2_CTRL & ~( bUEP_R_TOG | MASK_UEP_R_RES)| UEP_R_RES_ACK;
+			break;
+#endif
+#ifdef CONFIG_EP3_ENABLE
+		case 0x83:
+			UEP3_CTRL = UEP3_CTRL & ~( bUEP_T_TOG | MASK_UEP_T_RES)| UEP_T_RES_NAK;
+			break;
+		case 0x03:
+			UEP3_CTRL = UEP3_CTRL & ~( bUEP_R_TOG | MASK_UEP_R_RES)| UEP_R_RES_ACK;
+			break;
+#endif
+#ifdef CONFIG_EP4_ENABLE
+		case 0x84:
+			UEP4_CTRL = UEP4_CTRL & ~( bUEP_T_TOG | MASK_UEP_T_RES)| UEP_T_RES_NAK;
+			break;
+		case 0x04:
+			UEP4_CTRL = UEP4_CTRL & ~( bUEP_R_TOG | MASK_UEP_R_RES)| UEP_R_RES_ACK;
+			break;
+#endif
 		default:
 			return 1;
 		}
@@ -251,22 +259,16 @@ static inline int usb_ep0_setup_set_feature(void)
 				{
 			switch (((uint16_t)UsbSetupBuf->wIndexH << 8) | UsbSetupBuf->wIndexL)
 			{
-			case 0x84:
-				// Set endpoint4 IN STALL
-				UEP4_CTRL = UEP4_CTRL & (~bUEP_T_TOG)| UEP_T_RES_STALL;
+#ifdef CONFIG_EP1_ENABLE
+			case 0x81:
+				// Set endpoint1 IN STALL
+				UEP1_CTRL = UEP1_CTRL & (~bUEP_T_TOG)| UEP_T_RES_STALL;
 				break;
-			case 0x04:
-				// Set endpoint4 OUT Stall
-				UEP4_CTRL = UEP4_CTRL & (~bUEP_R_TOG)| UEP_R_RES_STALL;
-				break;
-			case 0x83:
-				// Set endpoint3 IN STALL
-				UEP3_CTRL = UEP3_CTRL & (~bUEP_T_TOG)| UEP_T_RES_STALL;
-				break;
-			case 0x03:
-				// Set endpoint3 OUT Stall
-				UEP3_CTRL = UEP3_CTRL & (~bUEP_R_TOG)| UEP_R_RES_STALL;
-				break;
+			case 0x01:
+				// Set endpoint1 OUT Stall
+				UEP1_CTRL = UEP1_CTRL & (~bUEP_R_TOG)| UEP_R_RES_STALL;
+#endif
+#ifdef CONFIG_EP2_ENABLE
 			case 0x82:
 				// Set endpoint2 IN STALL
 				UEP2_CTRL = UEP2_CTRL & (~bUEP_T_TOG)| UEP_T_RES_STALL;
@@ -275,13 +277,27 @@ static inline int usb_ep0_setup_set_feature(void)
 				// Set endpoint2 OUT Stall
 				UEP2_CTRL = UEP2_CTRL & (~bUEP_R_TOG)| UEP_R_RES_STALL;
 				break;
-			case 0x81:
-				// Set endpoint1 IN STALL
-				UEP1_CTRL = UEP1_CTRL & (~bUEP_T_TOG)| UEP_T_RES_STALL;
+#endif
+#ifdef CONFIG_EP3_ENABLE
+			case 0x83:
+				// Set endpoint3 IN STALL
+				UEP3_CTRL = UEP3_CTRL & (~bUEP_T_TOG)| UEP_T_RES_STALL;
 				break;
-			case 0x01:
-				// Set endpoint1 OUT Stall
-				UEP1_CTRL = UEP1_CTRL & (~bUEP_R_TOG)| UEP_R_RES_STALL;
+			case 0x03:
+				// Set endpoint3 OUT Stall
+				UEP3_CTRL = UEP3_CTRL & (~bUEP_R_TOG)| UEP_R_RES_STALL;
+				break;
+#endif
+#ifdef CONFIG_EP4_ENABLE
+			case 0x84:
+				// Set endpoint4 IN STALL
+				UEP4_CTRL = UEP4_CTRL & (~bUEP_T_TOG)| UEP_T_RES_STALL;
+				break;
+			case 0x04:
+				// Set endpoint4 OUT Stall
+				UEP4_CTRL = UEP4_CTRL & (~bUEP_R_TOG)| UEP_R_RES_STALL;
+				break;
+#endif
 			default:
 				return 1;
 			}
@@ -426,26 +442,8 @@ static inline void usb_ep0_setup(void)
 	if(!ret)
 		return;
 
-#if 0
-	// Tx data to host or send 0-length packet
-	if (len <= DEFAULT_ENDP0_SIZE)
-	{
-		UEP0_T_LEN = len;
-		UEP0_CTRL = bUEP_R_TOG | bUEP_T_TOG | UEP_R_RES_ACK
-				| UEP_T_RES_ACK;      //Expect DATA1, Answer ACK
-	}
-	else
-	{
-		// TODO: remove unreachable code here
-		UEP0_T_LEN = 0;  // Tx data to host or send 0-length packet
-		UEP0_CTRL = bUEP_R_TOG | bUEP_T_TOG | UEP_R_RES_ACK
-				| UEP_T_RES_ACK;  //Expect DATA1, Answer ACK
-	}
-#endif
-
-	return;
-
 unhandled:
+	usb_stat_inc(setup_unhandled);
 	SetupReq = 0xFF;
 	//STALL
 	UEP0_CTRL = bUEP_R_TOG | bUEP_T_TOG | UEP_R_RES_STALL
@@ -768,7 +766,9 @@ void usb_printstats()
 	printf("\t\tbad ep: %u\r\n", usb_stats.bad_ep);
 	printf("\t\ttog ng: %u\r\n", usb_stats.tog_ng);
 	printf("\t\tunhandled: %u\r\n", usb_stats.unhandled);
+
 	printf("\t\tsetup: %u\r\n", usb_stats.setup);
+	printf("\t\t\tunhandled: %u\r\n", usb_stats.setup_unhandled);
 
 	printf("\trst: %u\r\n", usb_stats.rst);
 	printf("\tsus: %u\r\n", usb_stats.sus);

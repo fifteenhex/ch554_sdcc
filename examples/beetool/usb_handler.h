@@ -54,7 +54,9 @@ struct usb_stats {
 	/* ep0 */
 	uint8_t in_ep0;
 	uint8_t out_ep0;
+
 	uint8_t setup;
+	uint8_t setup_unhandled;
 
 	/* others */
 #ifdef CONFIG_EP1_IN
