@@ -11,6 +11,7 @@
 #include <debug.h>
 
 #include "config.h"
+#include "usb_buffers.h"
 #include "usb_handler.h"
 
 // CRAP

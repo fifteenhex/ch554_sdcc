@@ -86,4 +86,7 @@ endmenu
 
 menu "debugging options"
 
+config USB_PKTDBG
+	bool "Low level packet debugging"
+
 endmenu

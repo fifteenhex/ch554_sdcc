@@ -4,29 +4,12 @@
 #include <ch554_usb.h>
 
 #include "config.h"
+#include "cdc.h"
+#include "usb_buffers.h"
 #include "usb_handler.h"
 #include "usb_descriptor.h"
 
 #define UsbSetupBuf     ((PUSB_SETUP_REQ)epbuffer_ep0)
-
-//on page 47 of data sheet, the receive buffer need to be min(possible packet size+2,64)
-__xdata uint8_t  epbuffer_ep0[DEFAULT_ENDP0_SIZE + 2];
-
-#ifdef CONFIG_EP1_ENABLE
-__xdata uint8_t  epbuffer_ep1[CONFIG_EP1_BUFFERSZ];
-#endif
-
-#ifdef CONFIG_EP2_ENABLE
-__xdata uint8_t  epbuffer_ep2[EP2_BUFFER_SZ] = { 0 };
-#endif
-
-#ifdef CONFIG_EP3_ENABLE
-__xdata uint8_t  epbuffer_ep3[CONFIG_EP3_BUFFERSZ];
-#endif
-
-#ifdef CONFIG_EP4_ENABLE
-__xdata uint8_t  Ep4Buffer[CONFIG_EP4_BUFFERSZ];
-#endif
 
 #ifdef CONFIG_USB_PKTDBG
 __xdata struct usb_stats usb_stats = { 0 };
@@ -37,7 +20,6 @@ __xdata struct usb_stats usb_stats = { 0 };
 	} while(0)
 #else
 #define usb_stat_inc(which) do { } while(0)
-
 #endif
 
 
@@ -91,8 +73,10 @@ static void ccpyx(__code char* src)
 static inline void usb_ep0_setup_send_response(size_t len)
 {
 	UEP0_T_LEN = len;
-	UEP0_CTRL = bUEP_R_TOG | bUEP_T_TOG | UEP_R_RES_ACK
-			| UEP_T_RES_ACK;
+	UEP0_CTRL = bUEP_R_TOG |
+		    bUEP_T_TOG |
+		    UEP_R_RES_ACK |
+		    UEP_T_RES_ACK;
 }
 
 static inline int usb_ep0_setup_vendor(void)
@@ -106,15 +90,13 @@ static inline int usb_ep0_setup_vendor(void)
 	return 0;
 }
 
-static inline int usb_ep0_setup_class(void)
+/*
+ * Class setup request handlers should be
+ * added here.
+ */
+static inline int usb_ep0_setup_class()
 {
-	switch (SetupReq)
-	{
-	default:
-		return 1;
-	}
-
-	return 0;
+	return cdc_setup_class();
 }
 
 static inline int usb_ep0_setup_get_descriptor(void)
@@ -143,7 +125,8 @@ static inline int usb_ep0_setup_get_descriptor(void)
 			pDescr = Prod_Des;
 		else
 			pDescr = Ser_Des;
-		len = pDescr[0];    // bLength
+		// bLength
+		len = pDescr[0];
 		break;
 	case USB_DESCR_TYP_REPORT:
 		if (UsbSetupBuf->wValueL == 0) {
@@ -367,6 +350,45 @@ static inline int usb_ep0_setup_set_configuration(void)
 	return 0;
 }
 
+static inline int usb_ep0_setup_standard(void)
+{
+	switch (SetupReq)           //Request ccfType
+	{
+	case USB_GET_DESCRIPTOR:
+		return usb_ep0_setup_get_descriptor();
+	case USB_SET_ADDRESS:
+		return usb_ep0_setup_set_address();
+	case USB_GET_CONFIGURATION:
+		return usb_ep0_setup_get_configuration();
+	case USB_SET_CONFIGURATION:
+		return usb_ep0_setup_set_configuration();
+	case USB_GET_INTERFACE:
+		break;
+	case USB_SET_INTERFACE:
+		break;
+	case USB_CLEAR_FEATURE:
+		return usb_ep0_setup_clear_feature();
+	case USB_SET_FEATURE:
+		return usb_ep0_setup_set_feature();
+	case USB_GET_STATUS:
+		return usb_ep0_setup_get_status();
+	}
+	return 1;
+}
+
+static inline int usb_ep0_setup_nonstandard(void)
+{
+	switch (( UsbSetupBuf->bRequestType & USB_REQ_TYP_MASK))
+	{
+	case USB_REQ_TYP_VENDOR:
+		return usb_ep0_setup_vendor();
+	case USB_REQ_TYP_CLASS:
+		return usb_ep0_setup_class();
+	default:
+		return 1;
+	}
+}
+
 static inline void usb_ep0_setup(void)
 {
 	int ret;
@@ -387,57 +409,10 @@ static inline void usb_ep0_setup(void)
 	SetupReq = UsbSetupBuf->bRequest;
 	usbMsgFlags = 0;
 
-	//Not standard request
-	if (( UsbSetupBuf->bRequestType & USB_REQ_TYP_MASK)
-			!= USB_REQ_TYP_STANDARD) {
-		switch (( UsbSetupBuf->bRequestType & USB_REQ_TYP_MASK))
-		{
-		case USB_REQ_TYP_VENDOR:
-			if(usb_ep0_setup_vendor())
-				goto unhandled;
-			break;
-		case USB_REQ_TYP_CLASS:
-			if(usb_ep0_setup_class())
-				goto unhandled;
-			break;
-		default:
-			goto unhandled;
-		}
-	}
-	//Standard request
+	if (( UsbSetupBuf->bRequestType & USB_REQ_TYP_MASK) == USB_REQ_TYP_STANDARD)
+		ret = usb_ep0_setup_standard();
 	else
-	{
-		switch (SetupReq)           //Request ccfType
-		{
-		case USB_GET_DESCRIPTOR:
-			ret = usb_ep0_setup_get_descriptor();
-			break;
-		case USB_SET_ADDRESS:
-			ret = usb_ep0_setup_set_address();
-			break;
-		case USB_GET_CONFIGURATION:
-			ret = usb_ep0_setup_get_configuration();
-			break;
-		case USB_SET_CONFIGURATION:
-			ret = usb_ep0_setup_set_configuration();
-			break;
-		case USB_GET_INTERFACE:
-			break;
-		case USB_SET_INTERFACE:
-			break;
-		case USB_CLEAR_FEATURE:
-			ret = usb_ep0_setup_clear_feature();
-			break;
-		case USB_SET_FEATURE:
-			ret = usb_ep0_setup_set_feature();
-			break;
-		case USB_GET_STATUS:
-			ret = usb_ep0_setup_get_status();
-			break;
-		default:
-			goto unhandled;
-		}
-	}
+		ret = usb_ep0_setup_nonstandard();
 
 	if(!ret)
 		return;
@@ -486,19 +461,22 @@ static void usb_ep0_out(void)
 #define ENDPOINT_STAT(which, direction) direction##_ep##which
 
 #define CALLENDPOINT(which, direction)			\
-{							\
-	usb_stats.ENDPOINT_STAT(which, direction)++;	\
+do {							\
+	usb_stat_inc(ENDPOINT_STAT(which, direction));	\
 	usb_ep##which##_##direction();			\
-}
+} while(0)
 
-#define BADENDPOINT() usb_stats.bad_ep++;
+#define BADENDPOINT()		\
+do {				\
+	usb_stat_inc(bad_ep);	\
+} while(0)
 
 static inline int usb_interrupt_fifo_ov(void)
 {
 	if (!UIF_FIFO_OV)
 		return 0;
 
-	usb_stats.ovr++;
+	usb_stat_inc(ovr);
 	return 1;
 }
 

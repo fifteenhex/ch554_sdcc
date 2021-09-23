@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "config.h"
+#include "usb_buffers.h"
 #include "usb_descriptor.h"
 
 #ifdef CONFIG_EP1_ENABLE
@@ -14,16 +15,7 @@ extern void usb_ep1_in(void);
 extern void usb_ep1_out(void);
 #endif
 #endif
-
 #ifdef CONFIG_EP2_ENABLE
-
-#if defined(CONFIG_EP2_IN) && defined(CONFIG_EP2_OUT)
-#define EP2_BUFFER_SZ 128
-#else
-#define EP2_BUFFER_SZ 64
-#endif
-
-extern __xdata uint8_t  epbuffer_ep2[EP2_BUFFER_SZ];
 #ifdef CONFIG_EP2_IN
 extern void usb_ep2_in(void);
 #endif

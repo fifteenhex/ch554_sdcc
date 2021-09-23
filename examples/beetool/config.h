@@ -3,8 +3,6 @@
 
 #define HID_PKT_SIZ 64
 
-#define CONFIG_USB_PKTDBG
-
 #define CONFIG_EP1_BUFFERSZ	64
 
 #define CONFIG_EP2_BUFFERSZ	64
