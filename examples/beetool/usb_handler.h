@@ -82,4 +82,13 @@ do									\
 #define usb_print_epbuffer(which) do {} while(0)
 #endif
 
+static inline void usb_ep0_setup_send_response(size_t len)
+{
+	UEP0_T_LEN = len;
+	UEP0_CTRL = bUEP_R_TOG |
+		    bUEP_T_TOG |
+		    UEP_R_RES_ACK |
+		    UEP_T_RES_ACK;
+}
+
 #endif

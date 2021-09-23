@@ -68,15 +68,6 @@ static void ccpyx(__code char* src)
 	__endasm;
 }
 
-static inline void usb_ep0_setup_send_response(size_t len)
-{
-	UEP0_T_LEN = len;
-	UEP0_CTRL = bUEP_R_TOG |
-		    bUEP_T_TOG |
-		    UEP_R_RES_ACK |
-		    UEP_T_RES_ACK;
-}
-
 static inline int usb_ep0_setup_vendor(void)
 {
 	switch (SetupReq)
@@ -327,13 +318,11 @@ static inline int usb_ep0_setup_set_address(void)
 
 static inline int usb_ep0_setup_get_configuration(void)
 {
-	int len;
+	int len = 0;
 
 	epbuffer_ep0[0] = UsbConfig;
 	if (SetupLen >= 1)
-			{
 		len = 1;
-	}
 
 	usb_ep0_setup_send_response(len);
 

@@ -12,6 +12,10 @@
 
 /* endpoint 0 */
 union ep0_composite {
+	/*
+	 * on page 47 of data sheet, the receive buffer
+	 * need to be min(possible packet size+2,64)
+	 */
 	uint8_t buf[USB_BUFFERS_ENDPOINT_SZ_UNIT + 2];
 	USB_SETUP_REQ setup_req;
 };

@@ -14,15 +14,6 @@
 #include "usb_buffers.h"
 #include "usb_handler.h"
 
-// CRAP
-//Bytes of received data on USB endpoint
-volatile uint8_t USBByteCountEP1 = 0;
-
-// for EP1 OUT double-buffering
-volatile uint8_t EP1_buffs_avail = 2;
-__bit EP1_buf_toggle = 0;
-// CRAP
-
 static void usb_irq(void) __interrupt (INT_NO_USB)
 {
 	usb_interrupt();
@@ -39,22 +30,6 @@ void usb_ep1_in(void)
 void usb_ep1_out(void)
 {
 	CH554UART1SendByte('1');
-
-
-		USBByteCountEP1 = USB_RX_LEN;
-		if (USBByteCountEP1) {
-			//Respond NAK. Let main change response after handling.
-			UEP1_CTRL = UEP1_CTRL & ~ MASK_UEP_R_RES | UEP_R_RES_NAK;
-
-			// double-buffering of DAP request packets
-			//DAP_RxBuf = (__xdata uint8_t*) UEP1_DMA;
-			EP1_buf_toggle = !EP1_buf_toggle;
-			//if (EP1_buf_toggle)
-			//    UEP1_DMA = (uint16_t) Ep1Buffer + 64;
-			//else
-			//    UEP1_DMA = (uint16_t) Ep1Buffer;
-
-		}
 }
 
 void main()

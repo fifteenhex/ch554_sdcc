@@ -2,12 +2,12 @@
 /* Copyright 2021 - Daniel Palmer <daniel@thingy.jp> */
 
 #include <stdio.h>
+#include <ch554.h>
 #include "cdc.h"
 #include "cdc_proto.h"
 #include "usb_buffers.h"
 #include "usb_handler.h"
 
-#include <ch554.h>
 
 static uint8_t flags;
 /* Data from the host is available */
@@ -31,11 +31,15 @@ void usb_ep2_out(void)
 
 int cdc_setup_class()
 {
+	printf("cc %02x\r\n", setupreq.bRequest);
+
 	switch(setupreq.bRequest){
+	case CDC_CLASS_REQUEST_SETLINECODING:
 	case CDC_CLASS_REQUEST_SETCONTROLLINESTATE:
-		printf("yay!\n");
+		usb_ep0_setup_send_response(0);
 		return 0;
 	}
+
 	return 1;
 }
 

@@ -3,10 +3,6 @@
 
 #include "usb_buffers.h"
 
-/*
- * on page 47 of data sheet, the receive buffer
- * need to be min(possible packet size+2,64)
- */
 __xdata union ep0_composite epbuffer_ep0_composite;
 
 #ifdef CONFIG_EP1_ENABLE
