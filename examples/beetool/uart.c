@@ -18,22 +18,21 @@ void uart_setup() {
 	IE_UART1 = 1;
 }
 
-void uart1_try_tx(void)
+void uart_try_tx(void)
 {
 	if(U1TI) {
-		SBUF1 = 'c';//
-		U1TI = 0;
-		if(uart_tx_have_data()) {
-			uart_tx_pop();
-		}
+		//if(uart_tx_have_data()) {
+			SBUF1 = uart_tx_pop();
+			U1TI = 0;
+		//}
 	}
 }
 
 /* allow debug output to be mixed in */
 int putchar(int ch)
 {
-	CH554UART1SendByte(ch);
-	//uart_tx_push(ch);
+	uart_tx_push(ch);
+	CH554UART1SendByte(uart_tx_pop());
 	//uart_try_tx();
 	return 0;
 }
