@@ -7,7 +7,7 @@
  * on page 47 of data sheet, the receive buffer
  * need to be min(possible packet size+2,64)
  */
-__xdata uint8_t epbuffer_ep0[USB_BUFFERS_ENDPOINT_SZ_UNIT + 2];
+__xdata union ep0_composite epbuffer_ep0_composite;
 
 #ifdef CONFIG_EP1_ENABLE
 __xdata uint8_t epbuffer_ep1[EP1_BUFFER_SZ];

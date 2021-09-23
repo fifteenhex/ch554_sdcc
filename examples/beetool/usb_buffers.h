@@ -4,12 +4,20 @@
 #ifndef USB_BUFFERS_H_
 #define USB_BUFFERS_H_
 
+#include <ch554_usb.h>
 #include <stdint.h>
 #include "config.h"
 
 #define USB_BUFFERS_ENDPOINT_SZ_UNIT	64
 
-extern __xdata uint8_t epbuffer_ep0[USB_BUFFERS_ENDPOINT_SZ_UNIT + 2];
+/* endpoint 0 */
+union ep0_composite {
+	uint8_t buf[USB_BUFFERS_ENDPOINT_SZ_UNIT + 2];
+	USB_SETUP_REQ setup_req;
+};
+extern __xdata union ep0_composite epbuffer_ep0_composite;
+#define epbuffer_ep0 (epbuffer_ep0_composite.buf)
+#define setupreq (epbuffer_ep0_composite.setup_req)
 
 /* endpoint 1 */
 #ifdef CONFIG_EP1_ENABLE

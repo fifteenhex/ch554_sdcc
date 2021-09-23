@@ -9,8 +9,6 @@
 #include "usb_handler.h"
 #include "usb_descriptor.h"
 
-#define UsbSetupBuf     ((PUSB_SETUP_REQ)epbuffer_ep0)
-
 #ifdef CONFIG_USB_PKTDBG
 __xdata struct usb_stats usb_stats = { 0 };
 
@@ -41,8 +39,8 @@ static void cpy_desc_Ep0(uint8_t len) __naked
 	__asm
 	xch A, _DPL     ; ACC = len
 	inc _XBUS_AUX
-	mov DPL, #_epbuffer_ep0
-	mov DPH, #(_epbuffer_ep0 >> 8)
+	mov DPL, #_epbuffer_ep0_composite
+	mov DPH, #(_epbuffer_ep0_composite >> 8)
 	dec _XBUS_AUX
 	mov DPL, _pDescr
 	mov DPH, (_pDescr + 1)
@@ -103,7 +101,7 @@ static inline int usb_ep0_setup_get_descriptor(void)
 {
 	int len;
 
-	switch (UsbSetupBuf->wValueH)
+	switch (setupreq.wValueH)
 	{
 	/* Device Descriptor */
 	case 1:
@@ -117,11 +115,11 @@ static inline int usb_ep0_setup_get_descriptor(void)
 		break;
 	/* String descriptor */
 	case 3:
-		if (UsbSetupBuf->wValueL == 0)
+		if (setupreq.wValueL == 0)
 			pDescr = LangDes;
-		else if (UsbSetupBuf->wValueL == 1)
+		else if (setupreq.wValueL == 1)
 			pDescr = Manuf_Des;
-		else if (UsbSetupBuf->wValueL == 2)
+		else if (setupreq.wValueL == 2)
 			pDescr = Prod_Des;
 		else
 			pDescr = Ser_Des;
@@ -129,7 +127,7 @@ static inline int usb_ep0_setup_get_descriptor(void)
 		len = pDescr[0];
 		break;
 	case USB_DESCR_TYP_REPORT:
-		if (UsbSetupBuf->wValueL == 0) {
+		if (setupreq.wValueL == 0) {
 			pDescr = ReportDesc;
 			len = ReportDescLen;
 		}
@@ -160,8 +158,8 @@ static inline int usb_ep0_setup_get_descriptor(void)
 static inline int usb_ep0_setup_clear_feature(void)
 {
 	// Clear the device feature.
-	if (( UsbSetupBuf->bRequestType & 0x1F) == USB_REQ_RECIP_DEVICE) {
-		if ((((uint16_t)UsbSetupBuf->wValueH << 8) | UsbSetupBuf->wValueL) == 0x01) {
+	if (( setupreq.bRequestType & 0x1F) == USB_REQ_RECIP_DEVICE) {
+		if ((((uint16_t)setupreq.wValueH << 8) | setupreq.wValueL) == 0x01) {
 			if (CfgDesc[7] & 0x20){
 				// wake up
 			}
@@ -172,9 +170,9 @@ static inline int usb_ep0_setup_clear_feature(void)
 			return 1;
 	}
 	// endpoint
-	else if (( UsbSetupBuf->bRequestType & USB_REQ_RECIP_MASK) == USB_REQ_RECIP_ENDP)
+	else if (( setupreq.bRequestType & USB_REQ_RECIP_MASK) == USB_REQ_RECIP_ENDP)
 	{
-		switch ( UsbSetupBuf->wIndexL)
+		switch ( setupreq.wIndexL)
 		{
 #ifdef CONFIG_EP1_ENABLE
 		case 0x81:
@@ -223,9 +221,9 @@ static inline int usb_ep0_setup_clear_feature(void)
 static inline int usb_ep0_setup_set_feature(void)
 {
 	/* Set  the device feature. */
-	if (( UsbSetupBuf->bRequestType & 0x1F) == USB_REQ_RECIP_DEVICE)
+	if (( setupreq.bRequestType & 0x1F) == USB_REQ_RECIP_DEVICE)
 	{
-		if ((((uint16_t)UsbSetupBuf->wValueH << 8) | UsbSetupBuf->wValueL) == 0x01) {
+		if ((((uint16_t)setupreq.wValueH << 8) | setupreq.wValueL) == 0x01) {
 			if (CfgDesc[7] & 0x20)
 			{
 				// suspend not supported
@@ -237,10 +235,10 @@ static inline int usb_ep0_setup_set_feature(void)
 			return 1;
 	}
 	//endpoint
-	else if (( UsbSetupBuf->bRequestType & 0x1F) == USB_REQ_RECIP_ENDP) {
-		if ((((uint16_t)UsbSetupBuf->wValueH << 8) | UsbSetupBuf->wValueL) == 0x00)
+	else if ((setupreq.bRequestType & 0x1F) == USB_REQ_RECIP_ENDP) {
+		if ((((uint16_t)setupreq.wValueH << 8) | setupreq.wValueL) == 0x00)
 				{
-			switch (((uint16_t)UsbSetupBuf->wIndexH << 8) | UsbSetupBuf->wIndexL)
+			switch (((uint16_t)setupreq.wIndexH << 8) | setupreq.wIndexL)
 			{
 #ifdef CONFIG_EP1_ENABLE
 			case 0x81:
@@ -320,7 +318,7 @@ static inline int usb_ep0_setup_get_status(void)
 static inline int usb_ep0_setup_set_address(void)
 {
 	// Save the assigned address
-	SetupLen = UsbSetupBuf->wValueL;
+	SetupLen = setupreq.wValueL;
 
 	usb_ep0_setup_send_response(0);
 
@@ -344,7 +342,7 @@ static inline int usb_ep0_setup_get_configuration(void)
 
 static inline int usb_ep0_setup_set_configuration(void)
 {
-	UsbConfig = UsbSetupBuf->wValueL;
+	UsbConfig = setupreq.wValueL;
 	usb_ep0_setup_send_response(0);
 
 	return 0;
@@ -378,7 +376,7 @@ static inline int usb_ep0_setup_standard(void)
 
 static inline int usb_ep0_setup_nonstandard(void)
 {
-	switch (( UsbSetupBuf->bRequestType & USB_REQ_TYP_MASK))
+	switch (( setupreq.bRequestType & USB_REQ_TYP_MASK))
 	{
 	case USB_REQ_TYP_VENDOR:
 		return usb_ep0_setup_vendor();
@@ -398,18 +396,18 @@ static inline void usb_ep0_setup(void)
 	if (len != (sizeof(USB_SETUP_REQ)))
 		goto unhandled;
 
-	uint16_t wLength = ((uint16_t)UsbSetupBuf->wLengthH << 8) |
-			(UsbSetupBuf->wLengthL);
+	uint16_t wLength = ((uint16_t)setupreq.wLengthH << 8) |
+			(setupreq.wLengthL);
 
 	SetupLen = wLength;
 	// maximum supported reply size is 254 bytes
 	if (wLength > 254)
 		SetupLen = 254;
 	len = 0;               // Default is success and upload 0 length
-	SetupReq = UsbSetupBuf->bRequest;
+	SetupReq = setupreq.bRequest;
 	usbMsgFlags = 0;
 
-	if (( UsbSetupBuf->bRequestType & USB_REQ_TYP_MASK) == USB_REQ_TYP_STANDARD)
+	if (( setupreq.bRequestType & USB_REQ_TYP_MASK) == USB_REQ_TYP_STANDARD)
 		ret = usb_ep0_setup_standard();
 	else
 		ret = usb_ep0_setup_nonstandard();
