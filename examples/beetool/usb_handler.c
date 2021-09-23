@@ -88,335 +88,412 @@ static void ccpyx(__code char* src)
 	__endasm;
 }
 
-static void usb_ep0_setup(void)
+static inline void usb_ep0_setup_send_response(size_t len)
 {
-	uint8_t len = USB_RX_LEN;
-	if (len == (sizeof(USB_SETUP_REQ)))
-			{
-		uint16_t wLength = ((uint16_t)UsbSetupBuf->wLengthH << 8)
-				| (UsbSetupBuf->wLengthL);
-		SetupLen = wLength;
-		// maximum supported reply size is 254 bytes
-		if (wLength > 254)
-			SetupLen = 254;
-		len = 0;               // Default is success and upload 0 length
-		SetupReq = UsbSetupBuf->bRequest;
-		usbMsgFlags = 0;
-		if (( UsbSetupBuf->bRequestType & USB_REQ_TYP_MASK)
-				!= USB_REQ_TYP_STANDARD)  //Not standard request
-		{
-			switch (( UsbSetupBuf->bRequestType & USB_REQ_TYP_MASK))
-			{
-			case USB_REQ_TYP_VENDOR:
-				{
-				switch (SetupReq)
-				{
-				default:
-					len = 0xFF; //command not supported
-					break;
-				}
-				break;
-			}
-			case USB_REQ_TYP_CLASS:
-				{
-				switch (SetupReq)
-				{
-				default:
-					len = 0xFF; //command not supported
-					break;
-				}
-				break;
-			}
-			default:
-				len = 0xFF;         //command not supported
-				break;
-			}
+	UEP0_T_LEN = len;
+	UEP0_CTRL = bUEP_R_TOG | bUEP_T_TOG | UEP_R_RES_ACK
+			| UEP_T_RES_ACK;
+}
 
+static inline int usb_ep0_setup_vendor(void)
+{
+	switch (SetupReq)
+	{
+	default:
+		return 1;
+	}
+
+	return 0;
+}
+
+static inline int usb_ep0_setup_class(void)
+{
+	switch (SetupReq)
+	{
+	default:
+		return 1;
+	}
+
+	return 0;
+}
+
+static inline int usb_ep0_setup_get_descriptor(void)
+{
+	int len;
+
+	switch (UsbSetupBuf->wValueH)
+	{
+	/* Device Descriptor */
+	case 1:
+		pDescr = (uint8_t*)&DevDesc;
+		len = sizeof(DevDesc);
+		break;
+	/* Configuration descriptor */
+	case 2:
+		pDescr = CfgDesc;
+		len = CfgDescLen;
+		break;
+	/* String descriptor */
+	case 3:
+		if (UsbSetupBuf->wValueL == 0)
+			pDescr = LangDes;
+		else if (UsbSetupBuf->wValueL == 1)
+			pDescr = Manuf_Des;
+		else if (UsbSetupBuf->wValueL == 2)
+			pDescr = Prod_Des;
+		else
+			pDescr = Ser_Des;
+		len = pDescr[0];    // bLength
+		break;
+	case USB_DESCR_TYP_REPORT:
+		if (UsbSetupBuf->wValueL == 0) {
+			pDescr = ReportDesc;
+			len = ReportDescLen;
 		}
-		else                           //Standard request
-		{
-			switch (SetupReq)           //Request ccfType
-			{
-			case USB_GET_DESCRIPTOR:
-				switch (UsbSetupBuf->wValueH)
-				{
-				case 1:             // Device Descriptor
-					pDescr = (uint8_t*)&DevDesc;
-					len = sizeof(DevDesc);
-					break;
-				case 2:             // configureation descriptor
-					pDescr = CfgDesc;
-					len = CfgDescLen;
-					break;
-				case 3:             // string descriptor
-					if (UsbSetupBuf->wValueL == 0)
-							{
-						pDescr = LangDes;
-					}
-					else if (UsbSetupBuf->wValueL == 1)
-							{
-						pDescr = Manuf_Des;
-					}
-					else if (UsbSetupBuf->wValueL == 2)
-							{
-						pDescr = Prod_Des;
-					}
-					else
-					{
-						pDescr = Ser_Des;
-					}
-					len = pDescr[0];    // bLength
-					break;
-				case USB_DESCR_TYP_REPORT:
-					if (UsbSetupBuf->wValueL == 0) {
-						pDescr = ReportDesc;
-						len = ReportDescLen;
-					}
-					else
-					{
-						len = 0xff;
-					}
-					break;
-				default:
-					len = 0xff; // Unsupported descriptors or error
-					break;
-				}
-				if (len != 0xff) {
-					if (SetupLen > len)
-							{
-						SetupLen = len;  // Limit length
-					}
-					len = SetupLen >= DEFAULT_ENDP0_SIZE ?
-							DEFAULT_ENDP0_SIZE :
-							SetupLen; //transmit length for this packet
-					cpy_desc_Ep0(len);
+		else
+			return 1;
+		break;
+	default:
+		// Unsupported descriptors or error
+		return 1;
+	}
 
-					SetupLen -= len;
-					pDescr += len;
-				}
-				break;
-			case USB_SET_ADDRESS:
-				SetupLen = UsbSetupBuf->wValueL; // Save the assigned address
-				break;
-			case USB_GET_CONFIGURATION:
-				epbuffer_ep0[0] = UsbConfig;
-				if (SetupLen >= 1)
-						{
-					len = 1;
-				}
-				break;
-			case USB_SET_CONFIGURATION:
-				UsbConfig = UsbSetupBuf->wValueL;
-				break;
-			case USB_GET_INTERFACE:
-				break;
-			case USB_SET_INTERFACE:
-				break;
-			case USB_CLEAR_FEATURE:
-				if (( UsbSetupBuf->bRequestType & 0x1F)
-						== USB_REQ_RECIP_DEVICE) // Clear the device featuee.
+	if (SetupLen > len)
+		SetupLen = len;  // Limit length
+
+	//transmit length for this packet
+	len = SetupLen >= DEFAULT_ENDP0_SIZE ? DEFAULT_ENDP0_SIZE :
+			SetupLen;
+	cpy_desc_Ep0(len);
+
+	SetupLen -= len;
+	pDescr += len;
+
+	usb_ep0_setup_send_response(len);
+
+	return 0;
+}
+
+static inline int usb_ep0_setup_clear_feature(void)
+{
+	int len;
+
+	if (( UsbSetupBuf->bRequestType & 0x1F)
+			== USB_REQ_RECIP_DEVICE) // Clear the device featuee.
+	{
+		if ((((uint16_t)UsbSetupBuf->wValueH
+				<< 8)
+				| UsbSetupBuf->wValueL)
+				== 0x01)
 				{
-					if ((((uint16_t)UsbSetupBuf->wValueH
-							<< 8)
-							| UsbSetupBuf->wValueL)
-							== 0x01)
-							{
-						if (CfgDesc[7] & 0x20)
-								{
-							// wake up
-						}
-						else
-						{
-							len = 0xFF;     //Failed
-						}
-					}
-					else
+			if (CfgDesc[7] & 0x20)
 					{
-						len = 0xFF;             //Failed
-					}
-				}
-				else if (( UsbSetupBuf->bRequestType
-						& USB_REQ_RECIP_MASK)
-						== USB_REQ_RECIP_ENDP) // endpoint
-				{
-					switch ( UsbSetupBuf->wIndexL)
-					{
-					case 0x84:
-						UEP4_CTRL =
-								UEP4_CTRL
-										& ~( bUEP_T_TOG
-												| MASK_UEP_T_RES)| UEP_T_RES_NAK;
-						break;
-					case 0x04:
-						UEP4_CTRL =
-								UEP4_CTRL
-										& ~( bUEP_R_TOG
-												| MASK_UEP_R_RES)| UEP_R_RES_ACK;
-						break;
-					case 0x83:
-						UEP3_CTRL =
-								UEP3_CTRL
-										& ~( bUEP_T_TOG
-												| MASK_UEP_T_RES)| UEP_T_RES_NAK;
-						break;
-					case 0x03:
-						UEP3_CTRL =
-								UEP3_CTRL
-										& ~( bUEP_R_TOG
-												| MASK_UEP_R_RES)| UEP_R_RES_ACK;
-						break;
-					case 0x82:
-						UEP2_CTRL =
-								UEP2_CTRL
-										& ~( bUEP_T_TOG
-												| MASK_UEP_T_RES)| UEP_T_RES_NAK;
-						break;
-					case 0x02:
-						UEP2_CTRL =
-								UEP2_CTRL
-										& ~( bUEP_R_TOG
-												| MASK_UEP_R_RES)| UEP_R_RES_ACK;
-						break;
-					case 0x81:
-						UEP1_CTRL =
-								UEP1_CTRL
-										& ~( bUEP_T_TOG
-												| MASK_UEP_T_RES)| UEP_T_RES_NAK;
-						break;
-					case 0x01:
-						UEP1_CTRL =
-								UEP1_CTRL
-										& ~( bUEP_R_TOG
-												| MASK_UEP_R_RES)| UEP_R_RES_ACK;
-						break;
-					default:
-						len = 0xFF; // Unsupported endpoint
-						break;
-					}
-				}
-				else
-				{
-					len = 0xFF; // Unsupported for non-endpoint
-				}
-				break;
-			case USB_SET_FEATURE:                     // Set Feature
-				if (( UsbSetupBuf->bRequestType & 0x1F)
-						== USB_REQ_RECIP_DEVICE) // Set  the device featuee.
-				{
-					if ((((uint16_t)UsbSetupBuf->wValueH
-							<< 8)
-							| UsbSetupBuf->wValueL)
-							== 0x01)
-							{
-						if (CfgDesc[7] & 0x20)
-								{
-							// suspend not supported
-						}
-						else
-						{
-							len = 0xFF;    // Failed
-						}
-					}
-					else
-					{
-						len = 0xFF;            // Failed
-					}
-				}
-				else if (( UsbSetupBuf->bRequestType & 0x1F)
-						== USB_REQ_RECIP_ENDP) //endpoint
-				{
-					if ((((uint16_t)UsbSetupBuf->wValueH
-							<< 8)
-							| UsbSetupBuf->wValueL)
-							== 0x00)
-							{
-						switch (((uint16_t)UsbSetupBuf->wIndexH
-								<< 8)
-								| UsbSetupBuf->wIndexL)
-						{
-						case 0x84:
-							UEP4_CTRL =
-									UEP4_CTRL
-											& (~bUEP_T_TOG)| UEP_T_RES_STALL; // Set endpoint4 IN STALL
-							break;
-						case 0x04:
-							UEP4_CTRL =
-									UEP4_CTRL
-											& (~bUEP_R_TOG)| UEP_R_RES_STALL; // Set endpoint4 OUT Stall
-							break;
-						case 0x83:
-							UEP3_CTRL =
-									UEP3_CTRL
-											& (~bUEP_T_TOG)| UEP_T_RES_STALL; // Set endpoint3 IN STALL
-							break;
-						case 0x03:
-							UEP3_CTRL =
-									UEP3_CTRL
-											& (~bUEP_R_TOG)| UEP_R_RES_STALL; // Set endpoint3 OUT Stall
-							break;
-						case 0x82:
-							UEP2_CTRL =
-									UEP2_CTRL
-											& (~bUEP_T_TOG)| UEP_T_RES_STALL; // Set endpoint2 IN STALL
-							break;
-						case 0x02:
-							UEP2_CTRL =
-									UEP2_CTRL
-											& (~bUEP_R_TOG)| UEP_R_RES_STALL; // Set endpoint2 OUT Stall
-							break;
-						case 0x81:
-							UEP1_CTRL =
-									UEP1_CTRL
-											& (~bUEP_T_TOG)| UEP_T_RES_STALL; // Set endpoint1 IN STALL
-							break;
-						case 0x01:
-							UEP1_CTRL =
-									UEP1_CTRL
-											& (~bUEP_R_TOG)| UEP_R_RES_STALL; // Set endpoint1 OUT Stall
-						default:
-							len = 0xFF;    // Failed
-							break;
-						}
-					}
-					else
-					{
-						len = 0xFF;            // Failed
-					}
-				}
-				else
-				{
-					len = 0xFF;                    // Failed
-				}
-				break;
-			case USB_GET_STATUS:
-				epbuffer_ep0[0] = 0x00;
-				epbuffer_ep0[1] = 0x00;
-				if (SetupLen >= 2)
-						{
-					len = 2;
-				}
-				else
-				{
-					len = SetupLen;
-				}
-				break;
-			default:
-				len = 0xff;                            // Failed
-				break;
+				// wake up
 			}
+			else
+			{
+				len = 0xFF;     //Failed
+			}
+		}
+		else
+		{
+			len = 0xFF;             //Failed
+		}
+	}
+	else if (( UsbSetupBuf->bRequestType
+			& USB_REQ_RECIP_MASK)
+			== USB_REQ_RECIP_ENDP) // endpoint
+	{
+		switch ( UsbSetupBuf->wIndexL)
+		{
+		case 0x84:
+			UEP4_CTRL =
+					UEP4_CTRL
+							& ~( bUEP_T_TOG
+									| MASK_UEP_T_RES)| UEP_T_RES_NAK;
+			break;
+		case 0x04:
+			UEP4_CTRL =
+					UEP4_CTRL
+							& ~( bUEP_R_TOG
+									| MASK_UEP_R_RES)| UEP_R_RES_ACK;
+			break;
+		case 0x83:
+			UEP3_CTRL =
+					UEP3_CTRL
+							& ~( bUEP_T_TOG
+									| MASK_UEP_T_RES)| UEP_T_RES_NAK;
+			break;
+		case 0x03:
+			UEP3_CTRL =
+					UEP3_CTRL
+							& ~( bUEP_R_TOG
+									| MASK_UEP_R_RES)| UEP_R_RES_ACK;
+			break;
+		case 0x82:
+			UEP2_CTRL =
+					UEP2_CTRL
+							& ~( bUEP_T_TOG
+									| MASK_UEP_T_RES)| UEP_T_RES_NAK;
+			break;
+		case 0x02:
+			UEP2_CTRL =
+					UEP2_CTRL
+							& ~( bUEP_R_TOG
+									| MASK_UEP_R_RES)| UEP_R_RES_ACK;
+			break;
+		case 0x81:
+			UEP1_CTRL =
+					UEP1_CTRL
+							& ~( bUEP_T_TOG
+									| MASK_UEP_T_RES)| UEP_T_RES_NAK;
+			break;
+		case 0x01:
+			UEP1_CTRL =
+					UEP1_CTRL
+							& ~( bUEP_R_TOG
+									| MASK_UEP_R_RES)| UEP_R_RES_ACK;
+			break;
+		default:
+			len = 0xFF; // Unsupported endpoint
+			break;
 		}
 	}
 	else
 	{
-		len = 0xff;                                //Wrong packet length
+		len = 0xFF; // Unsupported for non-endpoint
 	}
-	if (len == 0xff)
+
+	return 0;
+}
+
+static inline int usb_ep0_setup_set_feature(void)
+{
+	int len;
+
+	if (( UsbSetupBuf->bRequestType & 0x1F)
+			== USB_REQ_RECIP_DEVICE) // Set  the device featuee.
+	{
+		if ((((uint16_t)UsbSetupBuf->wValueH
+				<< 8)
+				| UsbSetupBuf->wValueL)
+				== 0x01)
+				{
+			if (CfgDesc[7] & 0x20)
+					{
+				// suspend not supported
+			}
+			else
 			{
-		SetupReq = 0xFF;
-		UEP0_CTRL = bUEP_R_TOG | bUEP_T_TOG | UEP_R_RES_STALL
-				| UEP_T_RES_STALL;                       //STALL
+				len = 0xFF;    // Failed
+			}
+		}
+		else
+		{
+			len = 0xFF;            // Failed
+		}
 	}
-	else if (len <= DEFAULT_ENDP0_SIZE) // Tx data to host or send 0-length packet
+	else if (( UsbSetupBuf->bRequestType & 0x1F)
+			== USB_REQ_RECIP_ENDP) //endpoint
+	{
+		if ((((uint16_t)UsbSetupBuf->wValueH
+				<< 8)
+				| UsbSetupBuf->wValueL)
+				== 0x00)
+				{
+			switch (((uint16_t)UsbSetupBuf->wIndexH
+					<< 8)
+					| UsbSetupBuf->wIndexL)
+			{
+			case 0x84:
+				UEP4_CTRL =
+						UEP4_CTRL
+								& (~bUEP_T_TOG)| UEP_T_RES_STALL; // Set endpoint4 IN STALL
+				break;
+			case 0x04:
+				UEP4_CTRL =
+						UEP4_CTRL
+								& (~bUEP_R_TOG)| UEP_R_RES_STALL; // Set endpoint4 OUT Stall
+				break;
+			case 0x83:
+				UEP3_CTRL =
+						UEP3_CTRL
+								& (~bUEP_T_TOG)| UEP_T_RES_STALL; // Set endpoint3 IN STALL
+				break;
+			case 0x03:
+				UEP3_CTRL =
+						UEP3_CTRL
+								& (~bUEP_R_TOG)| UEP_R_RES_STALL; // Set endpoint3 OUT Stall
+				break;
+			case 0x82:
+				UEP2_CTRL =
+						UEP2_CTRL
+								& (~bUEP_T_TOG)| UEP_T_RES_STALL; // Set endpoint2 IN STALL
+				break;
+			case 0x02:
+				UEP2_CTRL =
+						UEP2_CTRL
+								& (~bUEP_R_TOG)| UEP_R_RES_STALL; // Set endpoint2 OUT Stall
+				break;
+			case 0x81:
+				UEP1_CTRL =
+						UEP1_CTRL
+								& (~bUEP_T_TOG)| UEP_T_RES_STALL; // Set endpoint1 IN STALL
+				break;
+			case 0x01:
+				UEP1_CTRL =
+						UEP1_CTRL
+								& (~bUEP_R_TOG)| UEP_R_RES_STALL; // Set endpoint1 OUT Stall
+			default:
+				len = 0xFF;    // Failed
+				break;
+			}
+		}
+		else
+		{
+			len = 0xFF;            // Failed
+		}
+	}
+	else
+	{
+		len = 0xFF;                    // Failed
+	}
+
+	return 0;
+}
+
+static inline int usb_ep0_setup_get_status(void)
+{
+	int len;
+
+	epbuffer_ep0[0] = 0x00;
+	epbuffer_ep0[1] = 0x00;
+	if (SetupLen >= 2)
+			{
+		len = 2;
+	}
+	else
+	{
+		len = SetupLen;
+	}
+
+	usb_ep0_setup_send_response(len);
+
+	return 0;
+
+}
+
+static inline int usb_ep0_setup_set_address(void)
+{
+	// Save the assigned address
+	SetupLen = UsbSetupBuf->wValueL;
+
+	usb_ep0_setup_send_response(0);
+
+	return 0;
+}
+
+static inline int usb_ep0_setup_get_configuration(void)
+{
+	int len;
+
+	epbuffer_ep0[0] = UsbConfig;
+	if (SetupLen >= 1)
+			{
+		len = 1;
+	}
+
+	usb_ep0_setup_send_response(len);
+
+	return 0;
+}
+
+static inline int usb_ep0_setup_set_configuration(void)
+{
+	UsbConfig = UsbSetupBuf->wValueL;
+	usb_ep0_setup_send_response(0);
+
+	return 0;
+}
+
+static inline void usb_ep0_setup(void)
+{
+	int ret;
+
+	uint8_t len = USB_RX_LEN;
+
+	if (len != (sizeof(USB_SETUP_REQ)))
+		goto unhandled;
+
+	uint16_t wLength = ((uint16_t)UsbSetupBuf->wLengthH << 8) |
+			(UsbSetupBuf->wLengthL);
+
+	SetupLen = wLength;
+	// maximum supported reply size is 254 bytes
+	if (wLength > 254)
+		SetupLen = 254;
+	len = 0;               // Default is success and upload 0 length
+	SetupReq = UsbSetupBuf->bRequest;
+	usbMsgFlags = 0;
+
+	//Not standard request
+	if (( UsbSetupBuf->bRequestType & USB_REQ_TYP_MASK)
+			!= USB_REQ_TYP_STANDARD) {
+		switch (( UsbSetupBuf->bRequestType & USB_REQ_TYP_MASK))
+		{
+		case USB_REQ_TYP_VENDOR:
+			if(usb_ep0_setup_vendor())
+				goto unhandled;
+			break;
+		case USB_REQ_TYP_CLASS:
+			if(usb_ep0_setup_class())
+				goto unhandled;
+			break;
+		default:
+			goto unhandled;
+		}
+	}
+	//Standard request
+	else
+	{
+		switch (SetupReq)           //Request ccfType
+		{
+		case USB_GET_DESCRIPTOR:
+			ret = usb_ep0_setup_get_descriptor();
+			break;
+		case USB_SET_ADDRESS:
+			ret = usb_ep0_setup_set_address();
+			break;
+		case USB_GET_CONFIGURATION:
+			ret = usb_ep0_setup_get_configuration();
+			break;
+		case USB_SET_CONFIGURATION:
+			ret = usb_ep0_setup_set_configuration();
+			break;
+		case USB_GET_INTERFACE:
+			break;
+		case USB_SET_INTERFACE:
+			break;
+		case USB_CLEAR_FEATURE:
+			ret = usb_ep0_setup_clear_feature();
+			break;
+		case USB_SET_FEATURE:
+			ret = usb_ep0_setup_set_feature();
+			break;
+		case USB_GET_STATUS:
+			ret = usb_ep0_setup_get_status();
+			break;
+		default:
+			goto unhandled;
+		}
+	}
+
+	if(!ret)
+		return;
+
+#if 0
+	// Tx data to host or send 0-length packet
+	if (len <= DEFAULT_ENDP0_SIZE)
 	{
 		UEP0_T_LEN = len;
 		UEP0_CTRL = bUEP_R_TOG | bUEP_T_TOG | UEP_R_RES_ACK
@@ -429,6 +506,15 @@ static void usb_ep0_setup(void)
 		UEP0_CTRL = bUEP_R_TOG | bUEP_T_TOG | UEP_R_RES_ACK
 				| UEP_T_RES_ACK;  //Expect DATA1, Answer ACK
 	}
+#endif
+
+	return;
+
+unhandled:
+	SetupReq = 0xFF;
+	//STALL
+	UEP0_CTRL = bUEP_R_TOG | bUEP_T_TOG | UEP_R_RES_STALL
+			| UEP_T_RES_STALL;
 }
 
 static void usb_ep0_in(void)
