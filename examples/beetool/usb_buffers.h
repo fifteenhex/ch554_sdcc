@@ -47,7 +47,7 @@ struct ep2_composite {
 };
 
 extern __xdata struct ep2_composite epbuffer_ep2_composite;
-#define epbuffer_ep2 (epbuffer_ep2_composite.out)
+#define epbuffer_ep2_out (epbuffer_ep2_composite.out)
 #define epbuffer_ep2_in (epbuffer_ep2_composite.in)
 #endif
 

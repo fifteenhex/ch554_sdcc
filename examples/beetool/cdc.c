@@ -68,11 +68,11 @@ static void cdc_data_out(void)
 	cdc_stat_add(rx, cdc_data_len);
 
 #ifdef CONFIG_CDC_DEBUG
-	usb_print_epbuffer(2);
+	usb_print_epbuffer(2, out);
 
 	printf("cdc data - len: %d\r\n", cdc_data_len);
 	for(int i = 0; i < cdc_data_len; i++)
-		printf("%02x ", epbuffer_ep2[i]);
+		printf("%02x ", epbuffer(2, out)[i]);
 	printf("\r\n");
 #endif
 

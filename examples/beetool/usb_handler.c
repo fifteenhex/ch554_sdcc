@@ -679,7 +679,7 @@ void usb_configure()
 
 #ifdef CONFIG_EP2_ENABLE
 	/* Endpoint data transfer address */
-	UEP2_DMA = (uint16_t) epbuffer_ep2;
+	UEP2_DMA = (uint16_t) epbuffer_ep2_composite;
 
 	UEP2_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_NAK;
 	UEP2_T_LEN = 0;

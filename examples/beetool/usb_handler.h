@@ -67,12 +67,15 @@ struct usb_stats {
 };
 extern __xdata struct usb_stats usb_stats;
 
-#define usb_print_epbuffer(which)					\
+#define epbuffer(which, dir) \
+	epbuffer_ep##which##_##dir
+
+#define usb_print_epbuffer(which, dir)					\
 do									\
 {									\
 	printf("endpoint %d buffer:\r\n", which);			\
-	for(int i = 0; i < sizeof(epbuffer_ep##which); i++) {		\
-		printf("%02x ", epbuffer_ep##which[i]);			\
+	for(int i = 0; i < sizeof(epbuffer(which, dir)); i++) {		\
+		printf("%02x ", epbuffer(which, dir)[i]);		\
 		if((i + 1) % 16 == 0)					\
 			printf("\r\n");					\
 	}								\
