@@ -28,7 +28,6 @@ void main()
 
 	LED = 0;
 
-	UART1Setup();
 	uart_setup();
 
 	uint8_t i = 0;

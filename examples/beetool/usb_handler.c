@@ -440,6 +440,8 @@ static void usb_ep0_in_irq(void)
 
 static void usb_ep0_out_irq(void)
 {
+	cdc_control_out_irq();
+
 	UEP0_T_LEN = 0;
 	//Respond Nak
 	UEP0_CTRL |= UEP_R_RES_ACK | UEP_T_RES_NAK;
@@ -504,7 +506,6 @@ static inline void usb_interrupt_tx_out(uint8_t callIndex)
 
 static inline void usb_interrupt_tx_in(uint8_t callIndex)
 {
-	//SDCC will take IRAM if array of function pointer is used.
 	switch (callIndex) {
 	case 0:
 		CALLENDPOINT(0, in);
@@ -677,7 +678,7 @@ void usb_configure()
 #ifdef CONFIG_EP1_IN
 	UEP4_1_MOD = bUEP1_TX_EN;
 #endif
-#ifdef CONFIG_EP2_OUT
+#ifdef CONFIG_EP1_OUT
 	UEP4_1_MOD = bUEP1_RX_EN;
 #endif
 #endif

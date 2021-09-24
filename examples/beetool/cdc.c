@@ -42,14 +42,28 @@ static uint8_t flags = 0;
 static uint8_t out_flags = 0;
 /* Data from the host is available */
 #define FLAG_CDC_OUT_DATA_READY			(1 << 0)
+/* Host sent a set line coding request */
 #define FLAG_CDC_OUT_SETLINECODING		(1 << 1)
-#define FLAG_CDC_OUT_SETCONTROLLINESTATE	(1 << 2)
+/* Host sent the data for set line coding */
+#define FLAG_CDC_OUT_SETLINECODING_DATA		(1 << 2)
+/* Host sent a set control state request */
+#define FLAG_CDC_OUT_SETCONTROLLINESTATE	(1 << 3)
 
 /* flags set in loop */
 static uint8_t in_flags = 0;
 #define FLAG_CDC_IN_DATA_READY	1
 
 static uint8_t cdc_data_len;
+
+int cdc_control_out_irq(void)
+{
+	if(out_flags & FLAG_CDC_OUT_SETLINECODING) {
+		out_flags |= FLAG_CDC_OUT_SETLINECODING_DATA;
+		return 0;
+	}
+
+	return 1;
+}
 
 void cdc_notification_in_irq(void)
 {
@@ -81,20 +95,33 @@ int cdc_setup_class_irq(void)
 {
 	switch(setupreq.bRequest){
 	case CDC_CLASS_REQUEST_SETLINECODING:
+		cdc_stat_inc(setlinecoding);
+		if(setupreq.wLengthL != sizeof(struct cdc_linecoding))
+			return 1;
 		out_flags |= FLAG_CDC_OUT_SETLINECODING;
+		/*
+		 * at this point we know we'll be getting
+		 * a data structure in the next irq
+		 */
 		return 0;
 	case CDC_CLASS_REQUEST_SETCONTROLLINESTATE:
+		if(setupreq.wLengthL != 0)
+			return 1;
 		out_flags |= FLAG_CDC_OUT_SETCONTROLLINESTATE;
+		/*
+		 * We shouldn't get anything more at this point
+		 */
 		return 0;
 	}
 
 	return 1;
 }
 
-static inline void cdc_setup_class_setlinecoding(void)
+static inline void cdc_setlinecoding(void)
 {
-	if(setupreq.wLengthL != LINECODING_SZ){
-		cdc_dbg("Bad data size: %d\r\n", setupreq.wLengthL);
+	/* check we have the data structure */
+	if(!(out_flags) & FLAG_CDC_OUT_SETLINECODING_DATA){
+		cdc_dbg("no data struct yet\r\n");
 		return;
 	}
 
@@ -103,30 +130,32 @@ static inline void cdc_setup_class_setlinecoding(void)
 	cdc_dbg("\tformat: %d\r\n", cdc_linecoding_req.bCharFormat);
 	cdc_dbg("\tparity type: %d\r\n", cdc_linecoding_req.bParityType);
 	cdc_dbg("\tdata bits: %d\r\n", cdc_linecoding_req.bDataBits);
+
+	for(int i = 0; i < sizeof(struct cdc_linecoding); i++){
+		cdc_dbg("%02x ", epbuffer_ep0[i]);
+	}
+	cdc_dbg("\r\n");
+
+	uart_set_config(cdc_linecoding_req.dwDTERate);
 }
 
-static inline void cdc_setup_class_setcontrollinestate(void)
+static inline void cdc_setcontrollinestate(void)
 {
-	if(setupreq.wLengthL != 0){
-		cdc_dbg("Bad data size: %d\r\n", setupreq.wLengthL);
-		return;
-	}
-
 	cdc_dbg("set control line state: %02x%02x\r\n",
 				setupreq.wValueH, setupreq.wValueL);
 }
 
-static inline void cdc_setup_class(void)
+static inline void cdc_set_configuration(void)
 {
 	if(!(out_flags & (FLAG_CDC_OUT_SETLINECODING |
 			FLAG_CDC_OUT_SETCONTROLLINESTATE)))
 		return;
 
 	if(out_flags & FLAG_CDC_OUT_SETLINECODING)
-		cdc_setup_class_setlinecoding();
+		cdc_setlinecoding();
 
 	if(out_flags & FLAG_CDC_OUT_SETCONTROLLINESTATE)
-		cdc_setup_class_setcontrollinestate();
+		cdc_setcontrollinestate();
 
 	flags |= CDC_FLAG_CONFIGURED;
 	out_flags &= ~(FLAG_CDC_OUT_SETLINECODING | FLAG_CDC_OUT_SETCONTROLLINESTATE);
@@ -213,7 +242,7 @@ static inline void cdc_send_notification(void)
 	cdc_notification.setup_req.wIndexH = 0;
 	cdc_notification.setup_req.wIndexL = 0;
 	cdc_notification.setup_req.wLengthH = 0;
-	cdc_notification.setup_req.wLengthL = 2;
+	cdc_notification.setup_req.wLengthL = 0;
 	cdc_notification.data = 0;
 
 	UEP1_T_LEN = sizeof(cdc_notification);
@@ -232,13 +261,14 @@ static inline void cdc_print_stats(void)
 
 	printf("cdc: rx: %x\r\n", cdc_stats.rx);
 	printf("cdc: tx: %x\r\n", cdc_stats.tx);
+	printf("cdc: setlinecoding: %x\r\n", cdc_stats.setlinecoding);
 #endif
 }
 
 void cdc_main_loop()
 {
 	cdc_send_notification();
-	cdc_setup_class();
+	cdc_set_configuration();
 	cdc_data_out();
 	cdc_data_in();
 	cdc_print_stats();

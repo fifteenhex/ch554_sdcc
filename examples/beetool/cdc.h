@@ -12,6 +12,7 @@
 struct cdc_stats {
 	uint8_t rx;
 	uint8_t tx;
+	uint8_t setlinecoding;
 };
 
 extern __xdata struct cdc_stats cdc_stats;
@@ -19,10 +20,12 @@ extern __xdata struct cdc_stats cdc_stats;
 
 #ifdef CONFIG_CDC_ACM
 int cdc_setup_class_irq(void);
+int cdc_control_out_irq(void);
 void cdc_main_loop(void);
 #else
 #define cdc_setup_class_irq() do { } while (0)
 #define cdc_main_loop() do { } while (0)
+#define cdc_control_out_irq do { } while (0)
 #endif
 
 /* endpoint irq callbacks */

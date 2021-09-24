@@ -16,8 +16,18 @@ __xdata uint8_t uart_tx_buf[CONFIG_UART_BUFSZ];
 unsigned uart_rx_head = 0, uart_rx_tail = 0;
 unsigned uart_tx_head = 0, uart_tx_tail = 0;
 
-void uart_setup()
+void uart_set_config(unsigned int baud)
 {
+	SBAUD1 = 256 - FREQ_SYS/16/baud;
+}
+
+void uart_setup(void)
+{
+	U1SM0 = 0;
+	U1SMOD = 1;
+	U1REN = 1;
+	SBAUD1 = 256 - FREQ_SYS/16/UART1_BAUD;
+
 	IE_UART1 = 1;
 }
 

@@ -53,6 +53,7 @@ static inline void uart_tx_push(uint8_t b)
 		uart_rx_head = (uart_rx_head + 1) % sizeof(uart_rx_buf);	\
 	} while (0)
 
+void uart_set_config(unsigned int baud);
 void uart_setup(void);
 
 #endif
