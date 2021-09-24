@@ -85,7 +85,7 @@ static inline int usb_ep0_setup_vendor(void)
  */
 static inline int usb_ep0_setup_class()
 {
-	return cdc_setup_class();
+	return cdc_setup_class_irq();
 }
 
 static inline int usb_ep0_setup_get_descriptor(void)
@@ -118,13 +118,13 @@ static inline int usb_ep0_setup_get_descriptor(void)
 		len = pDescr[0];
 		break;
 	case USB_DESCR_TYP_REPORT:
-		if (setupreq.wValueL == 0) {
-			pDescr = ReportDesc;
-			len = ReportDescLen;
-		}
-		else
+		//if (setupreq.wValueL == 0) {
+		//	pDescr = ReportDesc;
+		//	len = ReportDescLen;
+		//}
+		//else
 			return 1;
-		break;
+		//break;
 	default:
 		// Unsupported descriptors or error
 		return 1;
@@ -412,7 +412,7 @@ unhandled:
 			| UEP_T_RES_STALL;
 }
 
-static void usb_ep0_in(void)
+static void usb_ep0_in_irq(void)
 {
 	switch (SetupReq) {
 	case USB_GET_DESCRIPTOR: {
@@ -438,7 +438,7 @@ static void usb_ep0_in(void)
 	}
 }
 
-static void usb_ep0_out(void)
+static void usb_ep0_out_irq(void)
 {
 	UEP0_T_LEN = 0;
 	//Respond Nak
@@ -450,7 +450,7 @@ static void usb_ep0_out(void)
 #define CALLENDPOINT(which, direction)			\
 do {							\
 	usb_stat_inc(ENDPOINT_STAT(which, direction));	\
-	usb_ep##which##_##direction();			\
+	usb_ep##which##_##direction##_irq();		\
 } while(0)
 
 #define BADENDPOINT()		\

@@ -8,7 +8,13 @@
 #include <stdint.h>
 #include "config.h"
 
+#include "cdc_proto.h"
+
 #define USB_BUFFERS_ENDPOINT_SZ_UNIT	64
+
+/* use this to access buffers when the ep is configurable */
+#define epbuffer(which, dir) \
+	epbuffer_ep##which##_##dir
 
 /* endpoint 0 */
 union ep0_composite {
@@ -39,7 +45,10 @@ extern __xdata uint8_t  epbuffer_ep1[EP1_BUFFER_SZ];
 
 struct ep2_composite {
 #ifdef CONFIG_EP2_OUT
-	uint8_t	out[USB_BUFFERS_ENDPOINT_SZ_UNIT];
+	union {
+		uint8_t	out[USB_BUFFERS_ENDPOINT_SZ_UNIT];
+		struct cdc_linecoding out_linecoding;
+	};
 #endif
 #ifdef CONFIG_EP2_IN
 	uint8_t in[USB_BUFFERS_ENDPOINT_SZ_UNIT];

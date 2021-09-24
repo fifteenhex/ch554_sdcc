@@ -53,17 +53,21 @@ menu "prebaked protocols"
 config CDC_ACM
 	bool "CDC ACM serial port"
 
+config CDC_ACM_DEBUG
+	bool "Output CDC ACM debug strings"
+	depends on CDC_ACM
+
 choice
-	prompt "CDC control endpoint"
+	prompt "CDC ACM notification endpoint"
 	depends on CDC_ACM
 	
-config CDC_ACM_CTRL_EP1
+config CDC_ACM_NOTIFICATION_EP1
 	bool "endpoint 1"
 
-config CDC_ACM_CTRL_EP2
+config CDC_ACM_NOTIFICATION_EP2
 	bool "endpoint 2"
 	
-config CDC_ACM_CTRL_EP3
+config CDC_ACM_NOTIFICATION_EP3
 	bool "endpoint 3"
 
 endchoice	
@@ -71,7 +75,7 @@ endchoice
 choice
 	prompt "CDC data endpoint"
 	depends on CDC_ACM
-	
+
 config CDC_ACM_DATA_EP1
 	bool "endpoint 1"
 	depends on !CDC_ACM_CTRL_EP1

@@ -61,28 +61,6 @@ __code struct {
 	//.i2c_out_ep = ENDPOINT_DESCR(3, 0, USB_ENDP_TYPE_BULK),
 };
 
-__code uint8_t ReportDesc[] ={
-    0x06, 0x00, 0xFF,   // Usage Page = 0xFF00 (Vendor Defined Page 1)
-    // USB-IF HID tool says vendor usage not required, but Win7 needs it
-    0x09, 0x01,         // Usage (Vendor Usage 1)
-    0xA1, 0x01,         // Collection (Application)
-    0x15, 0x00,         //  Logical minimum value 0
-    0x25, 0xFF,         //  Logical maximum value 255
-    0x75, 0x08,         //  Report Size: 8-bit field size
-    0x95, HID_PKT_SIZ,  //  Report Count: Make 64 fields
-
-    // Input Report
-    0x09, 0x01,         //  Usage (Vendor Usage 1)
-    0x81, 0x02,         //  Input (Data,Var,Abs,No Wrap,Linear)
-
-    // Output Report
-    0x09, 0x01,         //  Usage (Vendor Usage 1)
-    0x91, 0x02,         //  Output (Data,Var,Abs,No Wrap,Linear)
-
-    0xC0                // End Collection
-};
-__code uint8_t ReportDescLen = sizeof(ReportDesc);
-
 //String Descriptors
 //Language Descriptor
 __code uint16_t LangDes[]={

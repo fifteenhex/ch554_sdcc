@@ -19,19 +19,6 @@
 #include "uart_int.h"
 #include "usb_int.h"
 
-void usb_ep1_in(void)
-{
-	// No data to send anymore
-	UEP1_T_LEN = 0;
-	//Respond NAK by default
-	UEP1_CTRL = UEP1_CTRL & ~ MASK_UEP_T_RES | UEP_T_RES_NAK;
-}
-
-void usb_ep1_out(void)
-{
-	CH554UART1SendByte('1');
-}
-
 void main()
 {
 	CfgFsys();

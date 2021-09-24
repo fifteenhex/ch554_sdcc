@@ -30,7 +30,7 @@ int putchar(int ch)
 	/*
 	 * long printf lines will fill the buffer
 	 * and then get mashed up. So if the buffer is full
-	 * waiting before pushing into it.
+	 * wait before pushing into it.
 	 */
 	while(uart_tx_full());
 

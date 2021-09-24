@@ -9,18 +9,10 @@
 
 #ifdef CONFIG_EP1_ENABLE
 #ifdef CONFIG_EP1_IN
-extern void usb_ep1_in(void);
+extern void usb_ep1_in_irq(void);
 #endif
 #ifdef CONFIG_EP1_OUT
-extern void usb_ep1_out(void);
-#endif
-#endif
-#ifdef CONFIG_EP2_ENABLE
-#ifdef CONFIG_EP2_IN
-extern void usb_ep2_in(void);
-#endif
-#ifdef CONFIG_EP2_OUT
-extern void usb_ep2_out(void);
+extern void usb_ep1_out_irq(void);
 #endif
 #endif
 
@@ -67,9 +59,6 @@ struct usb_stats {
 };
 extern __xdata struct usb_stats usb_stats;
 
-#define epbuffer(which, dir) \
-	epbuffer_ep##which##_##dir
-
 #define usb_print_epbuffer(which, dir)					\
 do									\
 {									\
@@ -82,7 +71,7 @@ do									\
 	printf("\r\n");							\
 } while(0)
 #else
-#define usb_print_epbuffer(which) do {} while(0)
+#define usb_print_epbuffer(which, dir) do {} while(0)
 #endif
 
 static inline void usb_ep0_setup_send_response(size_t len)
