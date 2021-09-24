@@ -669,12 +669,17 @@ void usb_configure()
 
 #ifdef CONFIG_EP1_ENABLE
 	/* Endpoint data transfer address */
-	UEP1_DMA = (uint16_t) epbuffer_ep1;
-	/* Endpoint 1 automatically flips the sync flag, IN transaction returns NAK,
-	 * OUT returns ACK
-	 */
-	UEP1_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_ACK;
+	UEP1_DMA = (uint16_t) epbuffer_ep1_composite;
+	UEP1_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_NAK;
 	UEP1_T_LEN = 0;
+
+
+#ifdef CONFIG_EP1_IN
+	UEP4_1_MOD = bUEP1_TX_EN;
+#endif
+#ifdef CONFIG_EP2_OUT
+	UEP4_1_MOD = bUEP1_RX_EN;
+#endif
 #endif
 
 #ifdef CONFIG_EP2_ENABLE
@@ -708,8 +713,6 @@ void usb_configure()
 	UEP4_CTRL = bUEP_AUTO_TOG | UEP_T_RES_NAK | UEP_R_RES_NAK;
 	UEP4_T_LEN = 0;
 #endif
-
-	UEP4_1_MOD = bUEP1_RX_EN;
 }
 
 #ifdef CONFIG_USB_PKTDBG

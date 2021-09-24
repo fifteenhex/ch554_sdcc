@@ -24,20 +24,37 @@ union ep0_composite {
 	 */
 	uint8_t buf[USB_BUFFERS_ENDPOINT_SZ_UNIT + 2];
 	USB_SETUP_REQ setup_req;
+#ifdef CONFIG_CDC_ACM
+	struct cdc_linecoding out_linecoding;
+#endif
 };
 extern __xdata union ep0_composite epbuffer_ep0_composite;
 #define epbuffer_ep0 (epbuffer_ep0_composite.buf)
 #define setupreq (epbuffer_ep0_composite.setup_req)
+#define epbuffer_ep0_out_linecoding (epbuffer_ep0_composite.out_linecoding)
 
 /* endpoint 1 */
 #ifdef CONFIG_EP1_ENABLE
-#if defined(CONFIG_EP1_IN) && defined(CONFIG_EP1_OUT)
-#define EP1_BUFFER_SZ 128
-#else
-#define EP1_BUFFER_SZ 64
+struct ep1_composite {
+#ifdef CONFIG_EP1_OUT
+	union {
+		uint8_t	out[USB_BUFFERS_ENDPOINT_SZ_UNIT];
+	};
 #endif
+#ifdef CONFIG_EP1_IN
+	union {
+		uint8_t in[USB_BUFFERS_ENDPOINT_SZ_UNIT];
+#ifdef CONFIG_CDC_ACM
+		struct cdc_notification_serial_state in_notification;
+#endif
+	};
+#endif
+};
 
-extern __xdata uint8_t  epbuffer_ep1[EP1_BUFFER_SZ];
+extern __xdata struct ep1_composite epbuffer_ep1_composite;
+#define epbuffer_ep1_out (epbuffer_ep1_composite.out)
+#define epbuffer_ep1_in (epbuffer_ep1_composite.in)
+#define epbuffer_ep1_in_notification (epbuffer_ep1_composite.in_notification)
 #endif
 
 /* endpoint 2 */
@@ -47,7 +64,6 @@ struct ep2_composite {
 #ifdef CONFIG_EP2_OUT
 	union {
 		uint8_t	out[USB_BUFFERS_ENDPOINT_SZ_UNIT];
-		struct cdc_linecoding out_linecoding;
 	};
 #endif
 #ifdef CONFIG_EP2_IN
@@ -57,7 +73,6 @@ struct ep2_composite {
 
 extern __xdata struct ep2_composite epbuffer_ep2_composite;
 #define epbuffer_ep2_out (epbuffer_ep2_composite.out)
-#define epbuffer_ep2_out_linecoding (epbuffer_ep2_composite.out_linecoding)
 #define epbuffer_ep2_in (epbuffer_ep2_composite.in)
 #endif
 

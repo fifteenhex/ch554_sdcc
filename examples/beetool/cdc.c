@@ -20,18 +20,23 @@ __xdata struct cdc_stats cdc_stats = { 0 };
 	do {				\
 		cdc_stats.which += x;	\
 	} while(0)
+
+#define	cdc_dbg printf
 #else
+#define	cdc_dbg
 #define cdc_stat_inc(which) do { } while(0)
 #define cdc_stat_add(which, x) do { } while(0)
 #endif
 
-#define cdc_linecoding_req	epbuffer(2, out_linecoding)
+#define cdc_linecoding_req	epbuffer(0, out_linecoding)
+#define cdc_notification	epbuffer(1, in_notification)
 #define cdc_data_out_buf	epbuffer(2, out)
 #define cdc_data_in_buf		epbuffer(2, in)
 
 /* flags for cdc state */
 static uint8_t flags = 0;
 #define CDC_FLAG_CONFIGURED			(1 << 0)
+#define CDC_FLAG_SERIALSTATESYNC		(1 << 1)
 
 /* flags set in interrupt */
 static uint8_t out_flags = 0;
@@ -86,27 +91,42 @@ int cdc_setup_class_irq(void)
 	return 1;
 }
 
-static void cdc_setup_class(void)
+static inline void cdc_setup_class_setlinecoding(void)
+{
+	if(setupreq.wLengthL != LINECODING_SZ){
+		cdc_dbg("Bad data size: %d\r\n", setupreq.wLengthL);
+		return;
+	}
+
+	cdc_dbg("set line coding:\r\n");
+	cdc_dbg("\tbaud rate: %lu\r\n", cdc_linecoding_req.dwDTERate);
+	cdc_dbg("\tformat: %d\r\n", cdc_linecoding_req.bCharFormat);
+	cdc_dbg("\tparity type: %d\r\n", cdc_linecoding_req.bParityType);
+	cdc_dbg("\tdata bits: %d\r\n", cdc_linecoding_req.bDataBits);
+}
+
+static inline void cdc_setup_class_setcontrollinestate(void)
+{
+	if(setupreq.wLengthL != 0){
+		cdc_dbg("Bad data size: %d\r\n", setupreq.wLengthL);
+		return;
+	}
+
+	cdc_dbg("set control line state: %02x%02x\r\n",
+				setupreq.wValueH, setupreq.wValueL);
+}
+
+static inline void cdc_setup_class(void)
 {
 	if(!(out_flags & (FLAG_CDC_OUT_SETLINECODING |
 			FLAG_CDC_OUT_SETCONTROLLINESTATE)))
 		return;
 
-#ifdef CONFIG_CDC_ACM_DEBUG
-	if(out_flags & FLAG_CDC_OUT_SETLINECODING) {
-		printf("set line coding:\r\n");
-		printf("\tbaud rate: %lu\r\n", cdc_linecoding_req.dwDTERate);
-		printf("\tformat: %d\r\n", cdc_linecoding_req.bCharFormat);
-		printf("\tparity type: %d\r\n", cdc_linecoding_req.bParityType);
-		printf("\tdata bits: %d\r\n", cdc_linecoding_req.bDataBits);
-	}
-#endif
+	if(out_flags & FLAG_CDC_OUT_SETLINECODING)
+		cdc_setup_class_setlinecoding();
 
-#ifdef CONFIG_CDC_ACM_DEBUG
-	if(out_flags & FLAG_CDC_OUT_SETCONTROLLINESTATE) {
-		printf("set control line state:\r\n");
-	}
-#endif
+	if(out_flags & FLAG_CDC_OUT_SETCONTROLLINESTATE)
+		cdc_setup_class_setcontrollinestate();
 
 	flags |= CDC_FLAG_CONFIGURED;
 	out_flags &= ~(FLAG_CDC_OUT_SETLINECODING | FLAG_CDC_OUT_SETCONTROLLINESTATE);
@@ -114,7 +134,7 @@ static void cdc_setup_class(void)
 	usb_ep0_setup_send_response(0);
 }
 
-static void cdc_data_out(void)
+static inline void cdc_data_out(void)
 {
 	if(!(out_flags & FLAG_CDC_OUT_DATA_READY))
 		return;
@@ -145,7 +165,7 @@ static void cdc_data_out(void)
 	UEP2_CTRL = UEP2_CTRL & ~MASK_UEP_R_RES | UEP_R_RES_ACK;
 }
 
-static void cdc_data_in(void)
+static inline void cdc_data_in(void)
 {
 	int len = 0;
 
@@ -179,6 +199,26 @@ static void cdc_data_in(void)
 	UEP2_CTRL = (UEP2_CTRL & ~MASK_UEP_T_RES) | UEP_T_RES_ACK;
 }
 
+static inline void cdc_send_notification(void)
+{
+	if(flags & CDC_FLAG_SERIALSTATESYNC)
+		return;
+
+	flags |= CDC_FLAG_SERIALSTATESYNC;
+
+	cdc_notification.setup_req.bRequestType = 0xa1;
+	cdc_notification.setup_req.bRequest = CDC_NOTIFICATION_SERIAL_STATE;
+	cdc_notification.setup_req.wValueH = 0;
+	cdc_notification.setup_req.wValueL = 0;
+	cdc_notification.setup_req.wIndexH = 0;
+	cdc_notification.setup_req.wIndexL = 0;
+	cdc_notification.setup_req.wLengthH = 0;
+	cdc_notification.setup_req.wLengthL = 2;
+	cdc_notification.data = 0;
+
+	UEP1_T_LEN = sizeof(cdc_notification);
+	UEP1_CTRL = (UEP1_CTRL & ~MASK_UEP_T_RES) | UEP_T_RES_ACK;
+}
 static inline void cdc_print_stats(void)
 {
 #ifdef CONFIG_CDC_ACM_DEBUG
@@ -197,6 +237,7 @@ static inline void cdc_print_stats(void)
 
 void cdc_main_loop()
 {
+	cdc_send_notification();
 	cdc_setup_class();
 	cdc_data_out();
 	cdc_data_in();

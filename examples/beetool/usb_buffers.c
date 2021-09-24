@@ -6,7 +6,7 @@
 __xdata union ep0_composite epbuffer_ep0_composite;
 
 #ifdef CONFIG_EP1_ENABLE
-__xdata uint8_t epbuffer_ep1[EP1_BUFFER_SZ];
+__xdata struct ep1_composite epbuffer_ep1_composite;
 #endif
 
 #ifdef CONFIG_EP2_ENABLE
