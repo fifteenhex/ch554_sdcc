@@ -53,7 +53,7 @@ void main()
 		if (loop++ % 5000 == 0) {
 			usb_printstats();
 			LED = !LED;
-			mDelaymS(500);
+			//mDelaymS(500);
 		}
 	}
 }

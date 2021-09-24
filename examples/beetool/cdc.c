@@ -49,8 +49,6 @@ void usb_ep2_out(void)
 
 int cdc_setup_class()
 {
-	printf("cc %02x\r\n", setupreq.bRequest);
-
 	switch(setupreq.bRequest){
 	case CDC_CLASS_REQUEST_SETLINECODING:
 	case CDC_CLASS_REQUEST_SETCONTROLLINESTATE:
@@ -106,7 +104,7 @@ static void cdc_data_in(void)
 	printf("cdc: preparing tx\r\n");
 #endif
 
-	while(uart_rx_have_data())
+	while(uart_rx_have_data() && len < sizeof(epbuffer_ep2_in))
 		epbuffer_ep2_in[len++] = uart_rx_pop();
 
 	cdc_stat_add(tx, len);

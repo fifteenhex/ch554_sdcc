@@ -5,7 +5,13 @@
 
 static void uart1_irq(void) __interrupt (INT_NO_UART1)
 {
-	//uart_try_tx();
+	if (U1TI){
+		U1TI = 0;
+		if(uart_tx_have_data())
+			SBUF1 = uart_tx_pop();
+		else
+			uart_flags |= UART_FLAG_IDLE;
+	}
 
 	if (U1RI) {
 		U1RI = 0;
