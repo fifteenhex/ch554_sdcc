@@ -25,6 +25,10 @@ __xdata struct cdc_stats cdc_stats = { 0 };
 #define cdc_stat_add(which, x) do { } while(0)
 #endif
 
+#define cdc_linecoding_req	epbuffer(2, out_linecoding)
+#define cdc_data_out_buf	epbuffer(2, out)
+#define cdc_data_in_buf		epbuffer(2, in)
+
 /* flags for cdc state */
 static uint8_t flags = 0;
 #define CDC_FLAG_CONFIGURED			(1 << 0)
@@ -68,7 +72,7 @@ void cdc_data_out_irq(void)
 	out_flags |= FLAG_CDC_OUT_DATA_READY;
 }
 
-int cdc_setup_class_irq()
+int cdc_setup_class_irq(void)
 {
 	switch(setupreq.bRequest){
 	case CDC_CLASS_REQUEST_SETLINECODING:
@@ -84,15 +88,28 @@ int cdc_setup_class_irq()
 
 static void cdc_setup_class(void)
 {
-	if(!(out_flags & (FLAG_CDC_OUT_SETLINECODING | FLAG_CDC_OUT_SETLINECODING)))
+	if(!(out_flags & (FLAG_CDC_OUT_SETLINECODING |
+			FLAG_CDC_OUT_SETCONTROLLINESTATE)))
 		return;
 
 #ifdef CONFIG_CDC_ACM_DEBUG
-	printf("setup class\r\n");
+	if(out_flags & FLAG_CDC_OUT_SETLINECODING) {
+		printf("set line coding:\r\n");
+		printf("\tbaud rate: %lu\r\n", cdc_linecoding_req.dwDTERate);
+		printf("\tformat: %d\r\n", cdc_linecoding_req.bCharFormat);
+		printf("\tparity type: %d\r\n", cdc_linecoding_req.bParityType);
+		printf("\tdata bits: %d\r\n", cdc_linecoding_req.bDataBits);
+	}
+#endif
+
+#ifdef CONFIG_CDC_ACM_DEBUG
+	if(out_flags & FLAG_CDC_OUT_SETCONTROLLINESTATE) {
+		printf("set control line state:\r\n");
+	}
 #endif
 
 	flags |= CDC_FLAG_CONFIGURED;
-	out_flags &= ~(FLAG_CDC_OUT_SETLINECODING | FLAG_CDC_OUT_SETLINECODING);
+	out_flags &= ~(FLAG_CDC_OUT_SETLINECODING | FLAG_CDC_OUT_SETCONTROLLINESTATE);
 
 	usb_ep0_setup_send_response(0);
 }
@@ -109,7 +126,7 @@ static void cdc_data_out(void)
 
 	printf("cdc data - len: %d\r\n", cdc_data_len);
 	for(int i = 0; i < cdc_data_len; i++)
-		printf("%02x ", epbuffer(2, out)[i]);
+		printf("%02x ", cdc_data_out_buf[i]);
 	printf("\r\n");
 #endif
 
@@ -120,7 +137,7 @@ static void cdc_data_out(void)
 #ifndef CONFIG_CDC_ACM_DEBUG
 	for(int i = 0; i < cdc_data_len; i++) {
 		while(uart_tx_full());
-		uart_tx_push(epbuffer(2, out)[i]);
+		uart_tx_push(cdc_data_out_buf[i]);
 	}
 #endif
 
@@ -152,8 +169,8 @@ static void cdc_data_in(void)
 	printf("cdc: preparing tx\r\n");
 #endif
 
-	while(uart_rx_have_data() && len < sizeof(epbuffer_ep2_in))
-		epbuffer_ep2_in[len++] = uart_rx_pop();
+	while(uart_rx_have_data() && len < sizeof(cdc_data_in_buf))
+		cdc_data_in_buf[len++] = uart_rx_pop();
 
 	cdc_stat_add(tx, len);
 

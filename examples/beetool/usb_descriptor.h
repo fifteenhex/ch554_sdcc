@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: GPL-3.0 */
+/* Copyright 2021 - Daniel Palmer <daniel@thingy.jp> */
+
 #ifndef __CONST_DATA_H__
 #define __CONST_DATA_H__
 

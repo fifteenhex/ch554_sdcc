@@ -1,7 +1,8 @@
+/* SPDX-License-Identifier: GPL-3.0 */
 /*
  * BeeTool
  *
- * 2021 dgp <daniel@thingy.jp>
+ * 2021 Daniel Palmer <daniel@thingy.jp>
  */
 
 #include <stdint.h>

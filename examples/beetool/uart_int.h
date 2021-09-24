@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: GPL-3.0 */
+/* Copyright 2021 - Daniel Palmer <daniel@thingy.jp> */
+
 #ifndef UART_INT_H_
 #define UART_INT_H_
 

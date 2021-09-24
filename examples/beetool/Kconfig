@@ -52,6 +52,7 @@ menu "prebaked protocols"
 
 config CDC_ACM
 	bool "CDC ACM serial port"
+	depends on UART
 
 config CDC_ACM_DEBUG
 	bool "Output CDC ACM debug strings"
@@ -73,7 +74,7 @@ config CDC_ACM_NOTIFICATION_EP3
 endchoice	
 
 choice
-	prompt "CDC data endpoint"
+	prompt "CDC ACM data endpoint"
 	depends on CDC_ACM
 
 config CDC_ACM_DATA_EP1
@@ -90,6 +91,9 @@ endmenu
 
 # uart
 menu "uart"
+
+config UART
+	bool "Enable interrupt controlled uart driver"
 
 config UART_BUFSZ
 	int "size of each tx and rx buffer"
