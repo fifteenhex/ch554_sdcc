@@ -28,7 +28,10 @@ __code uint8_t CfgDescLen = sizeof(CfgDesc);
 
 __code struct {
 	USB_CFG_DESCR config;
+	/* i2c - to avoid having to make big driver changes this comes first */
+	USB_ITF_DESCR i2c_interface;
 	/* cdc */
+	struct usb_interface_association_descriptor cdc_iad;
 	USB_ITF_DESCR cdc_control_interface;
 	USB_HEADERFUNCTIONAL_DESCR cdc_header_functional;
 	USB_ACMFUNCTIONAL_DESCR cdc_acm_functional;
@@ -38,35 +41,27 @@ __code struct {
 	USB_ITF_DESCR cdc_data_interface;
 	USB_ENDP_DESCR cdc_data_in_ep;
 	USB_ENDP_DESCR cdc_data_out_ep;
-	/* i2c */
-	//USB_ITF_DESCR i2c_interface;
-	//USB_ENDP_DESCR i2c_in_ep;
-	//USB_ENDP_DESCR i2c_out_ep;
+
 } CfgDesc = {
-	.config = CFG_DESCR(2),
+	.config = CFG_DESCR(3),
+	/* i2c */
+	.i2c_interface = INTERF_DESCR(0, 0, USB_DESCR_TYP_INTERF, USB_DEV_CLASS_VEN_SPEC),
+	/* cdc iad */
+	.cdc_iad = usb_descriptor_interface_association_cdc_acm(1),
 	/* cdc control */
-	.cdc_control_interface = INTERF_DESCR(0, 1,USB_DEV_CLASS_COMMUNIC, USB_DEV_SUBCLASS_CDC_ACM),
+	.cdc_control_interface = INTERF_DESCR(1, 1,USB_DEV_CLASS_COMMUNIC, USB_DEV_SUBCLASS_CDC_ACM),
 	.cdc_header_functional = HEADERFUNCTIONAL_DESCR(),
 	.cdc_acm_functional = ACMFUNCTIONAL_DESCR(0xf),
-	.cdc_union_functional = UNIONFUNCTIONAL_DESCR(0, 1),
-	.cdc_call_management_functional = CALLMANAGEMENTFUNCTIONAL_DESCR(1),
+	.cdc_union_functional = UNIONFUNCTIONAL_DESCR(1, 2),
+	.cdc_call_management_functional = CALLMANAGEMENTFUNCTIONAL_DESCR(2),
 	.cdc_ctrl_ep = ENDPOINT_DESCR(1, 1, USB_ENDP_TYPE_INTER),
 	/* cdc data */
-	.cdc_data_interface = INTERF_DESCR(1, 2, USB_DEV_CLASS_CDC_DATA, 0),
+	.cdc_data_interface = INTERF_DESCR(2, 2, USB_DEV_CLASS_CDC_DATA, 0),
 	.cdc_data_in_ep = ENDPOINT_DESCR(2, 1, USB_ENDP_TYPE_BULK),
 	.cdc_data_out_ep = ENDPOINT_DESCR(2, 0, USB_ENDP_TYPE_BULK),
-	/* i2c */
-	//.i2c_interface = INTERF_DESCR(2, 2, USB_DESCR_TYP_INTERF, USB_DEV_SUBCLASS_CDC_ACM),
-	//.i2c_in_ep = ENDPOINT_DESCR(3, 1, USB_ENDP_TYPE_BULK),
-	//.i2c_out_ep = ENDPOINT_DESCR(3, 0, USB_ENDP_TYPE_BULK),
 };
 
-//String Descriptors
-//Language Descriptor
-__code uint16_t LangDes[]={
-	0x0300 + sizeof(LangDes),   // type and length
-	0x0409                      // 0x0409 = US English language code
-};
+/* String Descriptors */
 
 //Product String Descriptor
 __code uint16_t Prod_Des[]={

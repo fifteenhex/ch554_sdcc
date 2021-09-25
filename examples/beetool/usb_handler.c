@@ -106,9 +106,7 @@ static inline int usb_ep0_setup_get_descriptor(void)
 		break;
 	/* String descriptor */
 	case 3:
-		if (setupreq.wValueL == 0)
-			pDescr = LangDes;
-		else if (setupreq.wValueL == 1)
+		if (setupreq.wValueL == 1)
 			pDescr = Manuf_Des;
 		else if (setupreq.wValueL == 2)
 			pDescr = Prod_Des;

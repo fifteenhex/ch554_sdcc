@@ -123,6 +123,7 @@ CH554.H Header file for CH554 microcontrollers.
 #define USB_DESCR_TYP_QUALIF    0x06
 #define USB_DESCR_TYP_SPEED     0x07
 #define USB_DESCR_TYP_OTG       0x09
+#define USB_DESCRIPTOR_TYPE_IAD	0x0b
 #define USB_DESCR_TYP_HID       0x21
 #define USB_DESCR_TYP_REPORT    0x22
 #define USB_DESCR_TYP_PHYSIC    0x23
@@ -450,5 +451,52 @@ typedef struct _UDISK_BOC_CSW {         /* status of BulkOnly USB-FlashDisk */
 } UDISK_BOC_CSW, *PUDISK_BOC_CSW;
 
 typedef UDISK_BOC_CSW __xdata *PXUDISK_BOC_CSW;
+
+typedef struct usb_descriptor_head {
+	uint8_t bLength;
+	uint8_t bDescriptorType;
+};
+
+typedef struct usb_manuf {
+	uint8_t idVendorL;
+	uint16_t idVendor;
+	uint16_t idProduct;
+	uint16_t bcdDevice;
+	uint8_t iManufacturer;
+	uint8_t iProduct;
+	uint8_t iSerialNumber;
+	uint8_t bNumConfigurations;
+};
+
+typedef struct usb_interface_association_descriptor {
+	struct usb_descriptor_head head;
+	uint8_t bFirstInterface;
+	uint8_t bInterfaceCount;
+	uint8_t bFunctionClass;
+	uint8_t bFunctionSubClass;
+	uint8_t bFunctionProtocol;
+	uint8_t iFunction;
+};
+
+#define usb_descriptor_head(ctype, dtype)	\
+{						\
+	.bLength = sizeof(ctype),		\
+	.bDescriptorType = dtype,		\
+}
+
+#define usb_descriptor_interface_association(interface_first, interface_count, class, sub_class)									\
+{														\
+	.head = usb_descriptor_head(struct usb_interface_association_descriptor, USB_DESCRIPTOR_TYPE_IAD),	\
+	.bFirstInterface = interface_first,									\
+	.bInterfaceCount = interface_count,									\
+	.bFunctionClass = class,										\
+	.bFunctionSubClass = sub_class,										\
+}
+
+#define usb_descriptor_interface_association_cdc(interface_first, interface_count, sub_class) \
+	usb_descriptor_interface_association(interface_first, interface_count, USB_DEV_CLASS_COMMUNIC, sub_class)
+
+#define usb_descriptor_interface_association_cdc_acm(interface_first) \
+	usb_descriptor_interface_association_cdc(interface_first, 2, USB_DEV_SUBCLASS_CDC_ACM)
 
 #endif  // __USB_DEF__
