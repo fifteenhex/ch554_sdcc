@@ -141,8 +141,7 @@ static inline void cdc_setlinecoding(void)
 
 static inline void cdc_setcontrollinestate(void)
 {
-	cdc_dbg("set control line state: %02x%02x\r\n",
-				setupreq.wValueH, setupreq.wValueL);
+	cdc_dbg("set control line state: %04x\r\n", setupreq.wValue);
 }
 
 static inline void cdc_set_configuration(void)
@@ -237,8 +236,7 @@ static inline void cdc_send_notification(void)
 
 	cdc_notification.setup_req.bRequestType = 0xa1;
 	cdc_notification.setup_req.bRequest = CDC_NOTIFICATION_SERIAL_STATE;
-	cdc_notification.setup_req.wValueH = 0;
-	cdc_notification.setup_req.wValueL = 0;
+	cdc_notification.setup_req.wValue = 0;
 	cdc_notification.setup_req.wIndex = 0;
 	cdc_notification.setup_req.wLength = 0;
 	cdc_notification.data = 0;

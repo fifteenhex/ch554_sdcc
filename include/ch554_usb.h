@@ -191,12 +191,17 @@ CH554.H Header file for CH554 microcontrollers.
 #endif
 
 typedef struct _USB_SETUP_REQ {
-    uint8_t bRequestType;
-    uint8_t bRequest;
-    uint8_t wValueL;
-    uint8_t wValueH;
-    uint16_t wIndex;
-    uint16_t wLength;
+	uint8_t bRequestType;
+	uint8_t bRequest;
+	union {
+		struct {
+			uint8_t wValueL;
+			uint8_t wValueH;
+		};
+		uint16_t wValue;
+	};
+	uint16_t wIndex;
+	uint16_t wLength;
 } USB_SETUP_REQ, *PUSB_SETUP_REQ;
 
 typedef USB_SETUP_REQ __xdata *PXUSB_SETUP_REQ;

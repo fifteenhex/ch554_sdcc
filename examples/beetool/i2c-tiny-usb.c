@@ -3,12 +3,15 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <ch554.h>
 #include <ch554_usb.h>
 
 #include "usb_buffers.h"
 #include "usb_handler.h"
 #include "i2c-tiny-usb.h"
+
+#include "linux-i2c.h"
 
 #define CMD_ECHO		0
 #define CMD_GET_FUNC		1
@@ -31,13 +34,6 @@ static uint8_t flags = 0;
 #define FLAG_DO_IO		(1 << 4)
 #define FLAG_DO_IO_START	(1 << 5)
 #define FLAG_DO_IO_END		(1 << 6)
-
-
-/* Linux i2c functionality bits */
-#define I2C_FUNC_I2C			0x00000001
-/* i2cdetect wants these */
-#define I2C_FUNC_SMBUS_QUICK		0x00010000
-#define I2C_FUNC_SMBUS_READ_BYTE	0x00020000
 
 int i2c_tiny_setup_vendor_irq(void) {
 	switch(setupreq.bRequest){
@@ -66,8 +62,7 @@ static void i2c_tiny_get_func(void)
 		return;
 
 	epbuffer_i2c_tiny_func = I2C_FUNC_I2C |
-			I2C_FUNC_SMBUS_QUICK |
-			I2C_FUNC_SMBUS_READ_BYTE;
+				I2C_FUNC_SMBUS_EMUL;
 
 	flags &= ~FLAG_GET_FUNC;
 	usb_ep0_setup_send_response(sizeof(epbuffer_i2c_tiny_func));
@@ -100,14 +95,24 @@ static void i2c_tiny_do_io(void)
 	if(!(flags & FLAG_DO_IO))
 		return;
 
+	bool read = setupreq.wValue & I2C_M_RD;
+
 	printf("do io\r\n");
 
 	// address setupreq.wIndex;
 	// read data epbuffer_ep0
+	// flags setupreq.wValue;
+
+	if (read) {
+
+	}
+	else {
+
+	}
 
 	flags &= ~FLAG_DO_IO;
 
-	usb_ep0_setup_send_response(setupreq.wLength);
+	usb_ep0_setup_send_response(read ? setupreq.wLength : 0);
 }
 
 void i2c_tiny_main(void)
