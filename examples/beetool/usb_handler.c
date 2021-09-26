@@ -162,7 +162,7 @@ static inline int usb_ep0_setup_clear_feature(void)
 	// endpoint
 	else if (( setupreq.bRequestType & USB_REQ_RECIP_MASK) == USB_REQ_RECIP_ENDP)
 	{
-		switch ( setupreq.wIndexL)
+		switch ( setupreq.wIndex)
 		{
 #ifdef CONFIG_EP1_ENABLE
 		case 0x81:
@@ -228,7 +228,7 @@ static inline int usb_ep0_setup_set_feature(void)
 	else if ((setupreq.bRequestType & 0x1F) == USB_REQ_RECIP_ENDP) {
 		if ((((uint16_t)setupreq.wValueH << 8) | setupreq.wValueL) == 0x00)
 				{
-			switch (((uint16_t)setupreq.wIndexH << 8) | setupreq.wIndexL)
+			switch (setupreq.wIndex)
 			{
 #ifdef CONFIG_EP1_ENABLE
 			case 0x81:
@@ -384,12 +384,9 @@ static inline void usb_ep0_setup(void)
 	if (len != (sizeof(USB_SETUP_REQ)))
 		goto unhandled;
 
-	uint16_t wLength = ((uint16_t)setupreq.wLengthH << 8) |
-			(setupreq.wLengthL);
-
-	SetupLen = wLength;
+	SetupLen = setupreq.wLength;
 	// maximum supported reply size is 254 bytes
-	if (wLength > 254)
+	if (setupreq.wLength > 254)
 		SetupLen = 254;
 	len = 0;               // Default is success and upload 0 length
 	SetupReq = setupreq.bRequest;

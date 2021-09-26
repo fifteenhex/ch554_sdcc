@@ -96,7 +96,7 @@ int cdc_setup_class_irq(void)
 	switch(setupreq.bRequest){
 	case CDC_CLASS_REQUEST_SETLINECODING:
 		cdc_stat_inc(setlinecoding);
-		if(setupreq.wLengthL != sizeof(struct cdc_linecoding))
+		if(setupreq.wLength != sizeof(struct cdc_linecoding))
 			return 1;
 		out_flags |= FLAG_CDC_OUT_SETLINECODING;
 		/*
@@ -105,7 +105,7 @@ int cdc_setup_class_irq(void)
 		 */
 		return 0;
 	case CDC_CLASS_REQUEST_SETCONTROLLINESTATE:
-		if(setupreq.wLengthL != 0)
+		if(setupreq.wLength != 0)
 			return 1;
 		out_flags |= FLAG_CDC_OUT_SETCONTROLLINESTATE;
 		/*
@@ -239,10 +239,8 @@ static inline void cdc_send_notification(void)
 	cdc_notification.setup_req.bRequest = CDC_NOTIFICATION_SERIAL_STATE;
 	cdc_notification.setup_req.wValueH = 0;
 	cdc_notification.setup_req.wValueL = 0;
-	cdc_notification.setup_req.wIndexH = 0;
-	cdc_notification.setup_req.wIndexL = 0;
-	cdc_notification.setup_req.wLengthH = 0;
-	cdc_notification.setup_req.wLengthL = 0;
+	cdc_notification.setup_req.wIndex = 0;
+	cdc_notification.setup_req.wLength = 0;
 	cdc_notification.data = 0;
 
 	UEP1_T_LEN = sizeof(cdc_notification);

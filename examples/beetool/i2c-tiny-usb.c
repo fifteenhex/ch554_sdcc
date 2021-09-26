@@ -19,12 +19,25 @@
 #define CMD_I2C_IO_BEGIN	(1<<0)
 #define CMD_I2C_IO_END		(1<<1)
 
-static uint8_t flags = 0;
-#define FLAG_GET_ECHO	(1 << 0)
-#define FLAG_GET_FUNC	(1 << 1)
-#define FLAG_SET_DELAY	(1 << 2)
+#define STATUS_IDLE		0
+#define STATUS_ADDRESS_ACK	1
+#define STATUS_ADDRESS_NAK	2
 
-static int xxx = 0;
+static uint8_t flags = 0;
+#define FLAG_GET_ECHO		(1 << 0)
+#define FLAG_GET_FUNC		(1 << 1)
+#define FLAG_SET_DELAY		(1 << 2)
+#define FLAG_GET_STATUS		(1 << 3)
+#define FLAG_DO_IO		(1 << 4)
+#define FLAG_DO_IO_START	(1 << 5)
+#define FLAG_DO_IO_END		(1 << 6)
+
+
+/* Linux i2c functionality bits */
+#define I2C_FUNC_I2C			0x00000001
+/* i2cdetect wants these */
+#define I2C_FUNC_SMBUS_QUICK		0x00010000
+#define I2C_FUNC_SMBUS_READ_BYTE	0x00020000
 
 int i2c_tiny_setup_vendor_irq(void) {
 	switch(setupreq.bRequest){
@@ -32,8 +45,16 @@ int i2c_tiny_setup_vendor_irq(void) {
 			flags |= FLAG_GET_FUNC;
 			return 0;
 		case CMD_SET_DELAY:
-			xxx++;
 			flags |= FLAG_SET_DELAY;
+			return 0;
+		case CMD_GET_STATUS:
+			flags |= FLAG_GET_STATUS;
+			return 0;
+		case CMD_I2C_IO:
+		case (CMD_I2C_IO | CMD_I2C_IO_BEGIN):
+		case (CMD_I2C_IO | CMD_I2C_IO_END):
+		case (CMD_I2C_IO | CMD_I2C_IO_BEGIN | CMD_I2C_IO_END):
+			flags |= FLAG_DO_IO;
 			return 0;
 	}
 	return 1;
@@ -44,7 +65,9 @@ static void i2c_tiny_get_func(void)
 	if(!(flags & FLAG_GET_FUNC))
 		return;
 
-	epbuffer_i2c_tiny_func = 0;
+	epbuffer_i2c_tiny_func = I2C_FUNC_I2C |
+			I2C_FUNC_SMBUS_QUICK |
+			I2C_FUNC_SMBUS_READ_BYTE;
 
 	flags &= ~FLAG_GET_FUNC;
 	usb_ep0_setup_send_response(sizeof(epbuffer_i2c_tiny_func));
@@ -60,16 +83,37 @@ static void i2c_tiny_set_delay(void)
 	usb_ep0_setup_send_response(0);
 }
 
+static void i2c_tiny_get_status(void)
+{
+	if(!(flags & FLAG_GET_STATUS))
+		return;
+
+	epbuffer_i2c_tiny_status = STATUS_IDLE;
+
+	flags &= ~FLAG_GET_STATUS;
+
+	usb_ep0_setup_send_response(sizeof(epbuffer_i2c_tiny_status));
+}
+
+static void i2c_tiny_do_io(void)
+{
+	if(!(flags & FLAG_DO_IO))
+		return;
+
+	printf("do io\r\n");
+
+	// address setupreq.wIndex;
+	// read data epbuffer_ep0
+
+	flags &= ~FLAG_DO_IO;
+
+	usb_ep0_setup_send_response(setupreq.wLength);
+}
+
 void i2c_tiny_main(void)
 {
-	static int last = 0;
-
 	i2c_tiny_get_func();
 	i2c_tiny_set_delay();
-
-	if(last != xxx) {
-		printf("i2c-tiny: %d\r\r", xxx);
-	}
-
-	last = xxx;
+	i2c_tiny_get_status();
+	i2c_tiny_do_io();
 }
