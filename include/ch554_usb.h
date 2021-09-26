@@ -285,10 +285,8 @@ typedef struct _USB_DEVICE_DESCR {
     uint8_t bDeviceSubClass;
     uint8_t bDeviceProtocol;
     uint8_t bMaxPacketSize0;
-    uint8_t idVendorL;
-    uint8_t idVendorH;
-    uint8_t idProductL;
-    uint8_t idProductH;
+    uint16_t idVendor;
+    uint16_t idProduct;
     uint8_t bcdDeviceL;
     uint8_t bcdDeviceH;
     uint8_t iManufacturer;

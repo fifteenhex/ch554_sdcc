@@ -27,11 +27,15 @@ union ep0_composite {
 #ifdef CONFIG_CDC_ACM
 	struct cdc_linecoding out_linecoding;
 #endif
+#ifdef CONFIG_I2C_TINY
+	uint32_t functionality;
+#endif
 };
 extern __xdata union ep0_composite epbuffer_ep0_composite;
 #define epbuffer_ep0 (epbuffer_ep0_composite.buf)
 #define setupreq (epbuffer_ep0_composite.setup_req)
 #define epbuffer_ep0_out_linecoding (epbuffer_ep0_composite.out_linecoding)
+#define epbuffer_i2c_tiny_func (epbuffer_ep0_composite.functionality)
 
 /* endpoint 1 */
 #ifdef CONFIG_EP1_ENABLE

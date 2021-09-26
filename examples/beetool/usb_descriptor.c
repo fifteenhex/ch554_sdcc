@@ -14,8 +14,8 @@ __code USB_DEV_DESCR DevDesc = {
 	.bDeviceSubClass = 0,
 	.bDeviceProtocol = 0,
 	.bMaxPacketSize0 = DEFAULT_ENDP0_SIZE,
-	.idVendorH = 0x12, .idVendorL = 0x09,
-	.idProductH = 0xC5, .idProductL = 0x5D,
+	.idVendor = 0x16d0,
+	.idProduct = 0x10d3,
 	.bcdDeviceH = 0x01, .bcdDeviceL = 0x00,
 	// string descriptors
 	.iManufacturer = 1,
@@ -45,7 +45,7 @@ __code struct {
 } CfgDesc = {
 	.config = CFG_DESCR(3),
 	/* i2c */
-	.i2c_interface = INTERF_DESCR(0, 0, USB_DESCR_TYP_INTERF, USB_DEV_CLASS_VEN_SPEC),
+	.i2c_interface = INTERF_DESCR(0, 0, USB_DEV_CLASS_VEN_SPEC, 0),
 	/* cdc iad */
 	.cdc_iad = usb_descriptor_interface_association_cdc_acm(1),
 	/* cdc control */

@@ -5,6 +5,7 @@
 
 #include "config.h"
 #include "cdc.h"
+#include "i2c-tiny-usb.h"
 #include "usb_buffers.h"
 #include "usb_handler.h"
 #include "usb_descriptor.h"
@@ -70,13 +71,13 @@ static void ccpyx(__code char* src)
 
 static inline int usb_ep0_setup_vendor(void)
 {
-	switch (SetupReq)
-	{
-	default:
-		return 1;
-	}
+	//switch (SetupReq)
+	//{
+	//default:
+	//	return 1;
+	//}
 
-	return 0;
+	return i2c_tiny_setup_vendor_irq();
 }
 
 /*

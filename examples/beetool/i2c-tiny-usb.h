@@ -4,4 +4,7 @@
 #ifndef I2C_H_
 #define I2C_H_
 
+int i2c_tiny_setup_vendor_irq(void);
+void i2c_tiny_main(void);
+
 #endif

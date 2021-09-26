@@ -36,6 +36,7 @@ void main()
 
 	while (1) {
 		cdc_main_loop();
+		i2c_tiny_main();
 
 		if (loop++ % 5000 == 0) {
 			usb_printstats();

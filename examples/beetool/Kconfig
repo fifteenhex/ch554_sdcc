@@ -87,6 +87,9 @@ config CDC_ACM_DATA_EP2
 	
 endchoice
 
+config I2C_TINY
+	bool "i2c tiny emulation"
+
 endmenu
 
 # uart
